@@ -1,0 +1,80 @@
+workflows:
+  android-release:
+    name: Android — build and publish
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      groups:
+        - google_play        # add in Codemagic UI: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        - supabase            # add in Codemagic UI: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+      node: 20.11.1
+    triggering:
+      events: [push]
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Build static export
+        script: npm run build
+      - name: Add Android platform
+        script: npx cap add android || true
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build signed AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal          # promote manually to production once you're confident
+        submit_as_draft: true
+
+# --- iOS: pausado por ahora (plan: web + Google Play primero, Apple más adelante) ---
+# Cuando quieras activarlo, descomentá este bloque completo y seguí el paso 6 del README.
+#
+#  ios-release:
+#    name: iOS — build and publish to TestFlight
+#    max_build_duration: 60
+#    instance_type: mac_mini_m2   # Mac en la nube — no hace falta una física
+#    environment:
+#      ios_signing:
+#        distribution_type: app_store
+#        bundle_identifier: com.nuku.stoptutifruti
+#      groups:
+#        - app_store_connect    # variables: APP_STORE_CONNECT_*
+#        - supabase
+#      node: 20.11.1
+#    triggering:
+#      events: [push]
+#      branch_patterns:
+#        - pattern: main
+#          include: true
+#    scripts:
+#      - name: Install dependencies
+#        script: npm ci
+#      - name: Build static export
+#        script: npm run build
+#      - name: Add iOS platform
+#        script: npx cap add ios || true
+#      - name: Sync Capacitor
+#        script: npx cap sync ios
+#      - name: Install CocoaPods
+#        script: |
+#          cd ios/App
+#          pod install
+#      - name: Build ipa
+#        script: |
+#          xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+#    artifacts:
+#      - build/ios/ipa/*.ipa
+#    publishing:
+#      app_store_connect:
+#        auth: integration
+#        submit_to_testflight: true
+#        beta_groups:
+#          - "Testers"
