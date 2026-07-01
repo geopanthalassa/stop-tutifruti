@@ -47,15 +47,15 @@ const ThemeContext = createContext({ colors: LIGHT, theme: "light", toggle: () =
 function useColors() { return useContext(ThemeContext).colors; }
 
 const FONT_STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
-.font-display { font-family: 'Kalam', cursive; }
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+.font-display { font-family: 'Baloo 2', cursive; font-weight: 700; }
 .font-body { font-family: 'Inter', sans-serif; }
-.font-bubble {
-  font-family: 'Baloo 2', cursive;
-  font-weight: 800;
-  -webkit-text-stroke: 2px #2f2a22;
-  paint-order: stroke fill;
-  text-shadow: 3px 3px 0 rgba(0,0,0,0.12);
+.font-title {
+  font-family: 'Permanent Marker', cursive;
+  color: #1c1a16;
+  text-shadow:
+    -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff,
+    0 -3px 0 #fff, 0 3px 0 #fff, -3px 0 0 #fff, 3px 0 0 #fff;
 }
 `;
 
@@ -318,34 +318,56 @@ export default function StopGameApp() {
   );
 }
 
+// a real sticky note: folded corner, drop shadow, slight rotation, centered content
+function PostItCard({ children, color, rotate = -1.5, className = "" }) {
+  const bg = color || "#fff6c9";
+  return (
+    <div className={`relative text-center ${className}`} style={{
+      background: bg, padding: "24px 20px", transform: `rotate(${rotate}deg)`,
+      boxShadow: "3px 6px 14px rgba(0,0,0,0.25)", borderRadius: "2px",
+    }}>
+      <div style={{
+        position: "absolute", top: 0, right: 0, width: 0, height: 0,
+        borderStyle: "solid", borderWidth: "0 20px 20px 0",
+        borderColor: `transparent rgba(0,0,0,0.16) transparent transparent`,
+      }} />
+      {children}
+    </div>
+  );
+}
+
+const AKA_NAMES = ["Tutti Frutti", "Basta", "Bachillerato", "Alto el Lápiz", "Stadt, Land, Fluss", "Párame la Mano"];
+
 const DECORATIONS = [
-  { e: "🍎", top: "4%", left: "3%", size: 40, rot: -12 },
-  { e: "✏️", top: "8%", left: "90%", size: 44, rot: 18 },
-  { e: "🍌", top: "20%", left: "94%", size: 36, rot: -8 },
-  { e: "🌍", top: "34%", left: "2%", size: 42, rot: 6 },
-  { e: "🍇", top: "48%", left: "95%", size: 38, rot: 10 },
-  { e: "🦒", top: "60%", left: "1%", size: 40, rot: -6 },
-  { e: "🎨", top: "72%", left: "92%", size: 40, rot: -14 },
-  { e: "🍓", top: "84%", left: "4%", size: 36, rot: 12 },
-  { e: "⭐", top: "14%", left: "50%", size: 26, rot: 0 },
-  { e: "🏙️", top: "92%", left: "88%", size: 40, rot: -8 },
+  { kind: "note", top: "2%", left: "2%", color: "#ffd3dc", rot: -14, size: 46 },
+  { kind: "emoji", e: "✏️", top: "6%", left: "92%", size: 46, rot: 16 },
+  { kind: "note", top: "22%", left: "94%", color: "#a8ddd0", rot: 10 },
+  { kind: "emoji", e: "🍓", top: "36%", left: "2%", size: 40, rot: -8 },
+  { kind: "note", top: "50%", left: "95%", color: "#a9cdf2", rot: -8 },
+  { kind: "emoji", e: "🌍", top: "64%", left: "1%", size: 42, rot: 6 },
+  { kind: "note", top: "78%", left: "93%", color: "#ffe08a", rot: 12 },
+  { kind: "emoji", e: "⭐", top: "12%", left: "48%", size: 26, rot: 0 },
+  { kind: "emoji", e: "🦒", top: "90%", left: "6%", size: 38, rot: -10 },
 ];
 
 function CoverDecorations() {
   const { theme } = useContext(ThemeContext);
   return (
     <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {DECORATIONS.map((d, i) => (
-        <span key={i} style={{
-          position: "absolute", top: d.top, left: d.left, fontSize: d.size,
-          transform: `rotate(${d.rot}deg)`, opacity: theme === "light" ? 0.22 : 0.16,
-        }}>{d.e}</span>
-      ))}
+      {DECORATIONS.map((d, i) =>
+        d.kind === "emoji" ? (
+          <span key={i} style={{ position: "absolute", top: d.top, left: d.left, fontSize: d.size, transform: `rotate(${d.rot}deg)`, opacity: theme === "light" ? 0.28 : 0.2 }}>{d.e}</span>
+        ) : (
+          <span key={i} style={{
+            position: "absolute", top: d.top, left: d.left, width: 34, height: 34, background: d.color,
+            transform: `rotate(${d.rot}deg)`, opacity: theme === "light" ? 0.55 : 0.35, boxShadow: "1px 2px 4px rgba(0,0,0,0.2)",
+          }} />
+        )
+      )}
     </div>
   );
 }
 
-// example words pulled straight from the real bot dictionary — genuine variety, no hardcoded fake data
 function useGuideExamples(lang) {
   const cats = [
     { id: "country", letter: "A" }, { id: "name", letter: "B" }, { id: "animal", letter: "C" },
@@ -367,20 +389,24 @@ function MenuScreen({ setMode, lang, setLang }) {
   return (
     <div className="relative">
       <CoverDecorations />
-      <div className="relative flex items-start justify-between mb-2">
-        <div style={{ width: 32 }} />
-        <div className="flex-1" />
+      <div className="relative flex justify-end mb-2">
         <HeaderThemeToggle />
       </div>
 
-      <div className="relative text-center mb-2 py-4">
-        <h1 className="font-bubble text-6xl sm:text-7xl lg:text-8xl inline-block" style={{ color: C.red, transform: "rotate(-2deg)" }}>
+      <div className="relative text-center mb-3 py-4">
+        <h1 className="font-title text-6xl sm:text-7xl lg:text-8xl inline-block" style={{ transform: "rotate(-2deg)" }}>
           ¡STOP!
         </h1>
-        <p className="font-display text-2xl mt-1" style={{ color: C.ink, transform: "rotate(1deg)" }}>{t(lang, "appSubtitle")}</p>
+        <p className="font-display text-xl mt-1" style={{ color: C.ink }}>{t(lang, "appSubtitle")}</p>
+        <p className="text-xs font-body mt-3" style={{ color: C.muted }}>{t(lang, "akaLabel")}</p>
+        <div className="flex flex-wrap justify-center gap-2 mt-2">
+          {AKA_NAMES.map((n, i) => (
+            <span key={n} className="text-xs font-body px-2.5 py-1 rounded-full" style={{ background: catColor(i), color: "#2f2a22", fontWeight: 600 }}>{n}</span>
+          ))}
+        </div>
       </div>
 
-      <div className="flex gap-2 mb-6 justify-center flex-wrap relative">
+      <div className="flex gap-2 mb-8 justify-center flex-wrap relative">
         {LANGUAGES.map((l) => (
           <button key={l.code} onClick={() => setLang(l.code)}
             className="px-3 py-1 rounded-full text-xs font-body font-medium border"
@@ -390,41 +416,45 @@ function MenuScreen({ setMode, lang, setLang }) {
         ))}
       </div>
 
-      <div className="sm:grid sm:grid-cols-2 sm:gap-5 relative mb-2">
-        <Card>
-          <div className="flex items-center gap-2 mb-2"><Wifi size={18} color={C.red} /><h2 className="font-display text-2xl">{t(lang, "menuOnlineTitle")}</h2></div>
-          <p className="text-sm font-body mb-3" style={{ color: C.muted }}>{t(lang, "menuOnlineDesc")}</p>
-          <PrimaryButton onClick={() => setMode("online")} colorKey="red" icon={<Wifi size={18} />}>{t(lang, "menuOnlineBtn")}</PrimaryButton>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 mb-2"><Bot size={18} color={C.chalk} /><h2 className="font-display text-2xl">{t(lang, "menuPracticeTitle")}</h2></div>
-          <p className="text-sm font-body mb-3" style={{ color: C.muted }}>{t(lang, "menuPracticeDesc")}</p>
-          <PrimaryButton onClick={() => setMode("practice")} colorKey="chalk" icon={<Bot size={18} />}>{t(lang, "menuPracticeBtn")}</PrimaryButton>
-        </Card>
+      <div className="sm:grid sm:grid-cols-2 sm:gap-8 relative mb-10 max-w-2xl mx-auto">
+        <PostItCard color="#ffb3c1" rotate={-2}>
+          <div className="flex flex-col items-center gap-2 mb-2"><Wifi size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuOnlineTitle")}</h2></div>
+          <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuOnlineDesc")}</p>
+          <button onClick={() => setMode("online")} className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+            <Wifi size={18} /> {t(lang, "menuOnlineBtn")}
+          </button>
+        </PostItCard>
+        <PostItCard color="#ffe08a" rotate={2}>
+          <div className="flex flex-col items-center gap-2 mb-2"><Bot size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuPracticeTitle")}</h2></div>
+          <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuPracticeDesc")}</p>
+          <button onClick={() => setMode("practice")} className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+            <Bot size={18} /> {t(lang, "menuPracticeBtn")}
+          </button>
+        </PostItCard>
       </div>
 
-      <div className="lg:grid lg:grid-cols-5 lg:gap-5 relative">
+      <div className="lg:grid lg:grid-cols-5 lg:gap-8 relative max-w-4xl mx-auto">
         <div className="lg:col-span-3">
-          <Card>
-            <h3 className="font-display text-2xl mb-3" style={{ color: C.ink }}>{t(lang, "howToPlayTitle")}</h3>
-            <div className="space-y-2">
+          <PostItCard color="#a9cdf2" rotate={-1}>
+            <h3 className="font-display text-2xl mb-3" style={{ color: "#2f2a22" }}>{t(lang, "howToPlayTitle")}</h3>
+            <div className="space-y-2 text-left max-w-md mx-auto">
               {rules.map((line, i) => (
-                <p key={i} className="text-sm font-body leading-relaxed" style={{ color: C.text }}>{line}</p>
+                <p key={i} className="text-sm font-body leading-relaxed" style={{ color: "#2f2a22" }}>{line}</p>
               ))}
             </div>
-          </Card>
+          </PostItCard>
         </div>
         <div className="lg:col-span-2">
-          <Card>
-            <h3 className="font-display text-2xl mb-3" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
-            <div className="flex flex-wrap gap-2">
+          <PostItCard color="#a8ddd0" rotate={1.5}>
+            <h3 className="font-display text-2xl mb-3" style={{ color: "#2f2a22" }}>{t(lang, "categories")}</h3>
+            <div className="flex flex-wrap justify-center gap-2">
               {guide.map((g) => (
                 <span key={g.catLabel} className="text-xs font-body px-2.5 py-1.5" style={chipStyle(g.i)}>
                   {g.letter} · {g.catLabel}: {g.word}
                 </span>
               ))}
             </div>
-          </Card>
+          </PostItCard>
         </div>
       </div>
     </div>
