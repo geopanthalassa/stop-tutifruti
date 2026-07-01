@@ -15,40 +15,48 @@ const ALL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const MAX_CATEGORIES = 15;
 
-// pastel "post-it" colors — cycled per category so each one reads like a
-// different sticky note / washi-tape flag was used for it
-const PASTELS = ["#ffd3dc", "#c9e4de", "#cfe0f7", "#fff1b8", "#e3d5f7", "#ffdcc2", "#c8f0e7", "#f6d6e0"];
+// pastel ribbon colors — cycled per category so each one reads like a
+// different piece of washi tape / highlighter was used for it
+const PASTELS = ["#ffb3c1", "#a8ddd0", "#a9cdf2", "#ffe08a", "#d3b8f0", "#ffc19e", "#a0e8d8", "#f2b8d4"];
 function catColor(i) { return PASTELS[i % PASTELS.length]; }
 function chipStyle(i) {
   return {
-    background: catColor(i), color: "#3a3a3a",
-    borderRadius: "10px 10px 10px 3px",
-    transform: `rotate(${i % 2 === 0 ? -2 : 2}deg)`,
-    boxShadow: "1px 2px 4px rgba(0,0,0,0.18)",
+    background: catColor(i), color: "#2f2a22",
+    borderRadius: "12px 12px 12px 2px",
+    transform: `rotate(${i % 3 === 0 ? -2 : i % 3 === 1 ? 1.5 : -1}deg)`,
+    boxShadow: "1px 3px 5px rgba(0,0,0,0.2)",
+    fontWeight: 700,
   };
 }
 
 // ---------- themes ----------
 const LIGHT = {
   name: "light",
-  bg: "#fbf7ef", card: "#ffffff", grid: "#e7edf5",
-  text: "#3a3a3a", ink: "#6a93c7", red: "#ff9a8b", muted: "#a39c8c",
-  chalk: "#ffd97d", green: "#8fd4b3", inputBg: "#ffffff",
+  bg: "#ffffff", card: "#ffffff", rule: "#a9c9ea", margin: "#d9433a",
+  text: "#2b2b2b", ink: "#4a72b5", red: "#ff9a8b", muted: "#8c8577",
+  chalk: "#ffd97d", green: "#8fd4b3", inputBg: "#ffffff", ring: "#b9b2a3",
 };
 const DARK = {
   name: "dark",
-  bg: "#232733", card: "#2b2f3d", grid: "#3a3f52",
+  bg: "#20232d", card: "#292d3a", rule: "#3d5578", margin: "#c96a62",
   text: "#f4f1ea", ink: "#9fc4ea", red: "#ff9a8b", muted: "#9098b0",
-  chalk: "#ffd97d", green: "#8fe0b8", inputBg: "#333850",
+  chalk: "#ffd97d", green: "#8fe0b8", inputBg: "#333850", ring: "#565c72",
 };
 
 const ThemeContext = createContext({ colors: LIGHT, theme: "light", toggle: () => {} });
 function useColors() { return useContext(ThemeContext).colors; }
 
 const FONT_STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 .font-display { font-family: 'Kalam', cursive; }
 .font-body { font-family: 'Inter', sans-serif; }
+.font-bubble {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  -webkit-text-stroke: 2px #2f2a22;
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.12);
+}
 `;
 
 function normalize(s) {
@@ -94,6 +102,39 @@ function scoreRound(categories, playerIds, getAnswer, letter, disabledKeys = [])
 // ============================================================
 // SHARED UI PIECES
 // ============================================================
+function ruledBg(C, size) {
+  return {
+    backgroundColor: C.card,
+    backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${size - 1}px, ${C.rule} ${size}px)`,
+  };
+}
+// jagged "torn page" top edge
+function tornEdgePath(teeth = 26, amp = 7) {
+  const pts = [];
+  for (let i = 0; i <= teeth; i++) {
+    const x = (i / teeth) * 100;
+    const y = i % 2 === 0 ? 0 : amp;
+    pts.push(`${x}% ${y}px`);
+  }
+  pts.push("100% 100%", "0% 100%");
+  return `polygon(${pts.join(",")})`;
+}
+// the spiral-ring binding strip running down the left edge of the page
+function SpiralBinding() {
+  const C = useColors();
+  return (
+    <div
+      className="hidden sm:block flex-shrink-0"
+      style={{
+        width: 26,
+        backgroundImage: `radial-gradient(circle, transparent 6px, ${C.ring} 6px, ${C.ring} 9px, transparent 9px)`,
+        backgroundSize: "100% 30px",
+        backgroundRepeat: "repeat-y",
+        backgroundPosition: "center top",
+      }}
+    />
+  );
+}
 function Header({ subtitle }) {
   const { theme, toggle } = useContext(ThemeContext);
   const C = useColors();
@@ -104,20 +145,19 @@ function Header({ subtitle }) {
         <h1 className="font-display text-5xl" style={{ color: C.red, transform: "rotate(-1deg)" }}>¡STOP!</h1>
         {subtitle && <p className="text-xs font-body mt-1" style={{ color: C.muted }}>{subtitle}</p>}
       </div>
-      <button onClick={toggle} className="p-2 rounded-full" style={{ color: C.text, border: `1px solid ${C.grid}` }}>
+      <button onClick={toggle} className="p-2 rounded-full" style={{ color: C.text, border: `1px solid ${C.rule}` }}>
         {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
       </button>
     </div>
   );
 }
-function Card({ children }) {
+function Card({ children, className = "" }) {
   const C = useColors();
   return (
-    <div className="mb-4" style={{
-      background: C.card, borderRadius: 10, padding: "20px",
-      backgroundImage: `radial-gradient(${C.grid} 1px, transparent 1px)`,
-      backgroundSize: "16px 16px",
-      boxShadow: "0 1px 0 rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.10)",
+    <div className={`mb-4 ${className}`} style={{
+      ...ruledBg(C, 24), borderRadius: 12, padding: "20px",
+      boxShadow: "0 1px 0 rgba(0,0,0,0.05), 0 6px 18px rgba(0,0,0,0.12)",
+      border: `1px solid ${C.rule}`,
     }}>
       {children}
     </div>
@@ -136,7 +176,7 @@ function PrimaryButton({ children, onClick, disabled, colorKey = "red", icon }) 
   return (
     <button onClick={onClick} disabled={disabled}
       className="w-full flex items-center justify-center gap-2 rounded-xl py-3 font-display text-xl disabled:opacity-40"
-      style={{ background: C[colorKey], color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+      style={{ background: C[colorKey], color: "#2f2a22", boxShadow: "0 3px 0 rgba(0,0,0,0.18)" }}>
       {icon} {children}
     </button>
   );
@@ -184,7 +224,6 @@ function LetterSpinner({ usedLetters, onLanded, lang }) {
     </div>
   );
 }
-// shared category editor — used when creating an online room and in practice setup
 function CategoryEditor({ lang, categories, setCategories }) {
   const C = useColors();
   const [newCat, setNewCat] = useState("");
@@ -201,11 +240,11 @@ function CategoryEditor({ lang, categories, setCategories }) {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap gap-3 mb-4">
         {categories.map((c, i) => (
-          <span key={c} className="flex items-center gap-1 text-sm font-body font-medium px-3 py-1" style={chipStyle(i)}>
+          <span key={c} className="flex items-center gap-1 text-sm font-body px-3 py-1.5" style={chipStyle(i)}>
             {c}
-            <button onClick={() => remove(c)}><X size={12} color="#3a3a3a" /></button>
+            <button onClick={() => remove(c)}><X size={12} color="#2f2a22" /></button>
           </span>
         ))}
       </div>
@@ -215,7 +254,7 @@ function CategoryEditor({ lang, categories, setCategories }) {
           <div className="flex gap-2 mb-2">
             <input value={newCat} onChange={(e) => setNewCat(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
               placeholder={t(lang, "newCategoryPlaceholder")} className="flex-1 rounded-lg px-3 py-2 outline-none font-body text-sm"
-              style={{ background: C.inputBg, border: `1px solid ${C.grid}`, color: C.text }} />
+              style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
             <button onClick={() => add()} className="px-3 rounded-lg font-body text-sm font-medium" style={{ background: C.red, color: "#2f2a22" }}>
               <Plus size={16} />
             </button>
@@ -226,8 +265,8 @@ function CategoryEditor({ lang, categories, setCategories }) {
           {showSuggestions && (
             <div className="flex flex-wrap gap-2 mb-2">
               {suggestions.map((s, i) => (
-                <button key={s} onClick={() => add(s)} className="text-xs font-body px-2 py-1 rounded-lg opacity-80"
-                  style={{ background: catColor(i), color: "#3a3a3a" }}>
+                <button key={s} onClick={() => add(s)} className="text-xs font-body px-2.5 py-1 rounded-lg opacity-90"
+                  style={{ background: catColor(i), color: "#2f2a22", fontWeight: 600 }}>
                   {s}
                 </button>
               ))}
@@ -241,14 +280,15 @@ function CategoryEditor({ lang, categories, setCategories }) {
     </div>
   );
 }
-// Enter jumps to the next field instead of requiring a tap into the next box
 function focusNext(inputRefs, i) {
   const next = inputRefs.current[i + 1];
   if (next) next.focus();
 }
 
 // ============================================================
-// APP ROOT
+// APP ROOT — the whole app sits on an open notebook: grid-ruled page(s)
+// with a visible spiral binding. Wide screens get more breathing room,
+// not just a wider single column.
 // ============================================================
 export default function StopGameApp() {
   const [mode, setMode] = useState("menu");
@@ -259,28 +299,88 @@ export default function StopGameApp() {
 
   return (
     <ThemeContext.Provider value={{ colors, theme, toggle }}>
-      <div className="font-body min-h-screen w-full" style={{
-        background: colors.bg, color: colors.text,
-        backgroundImage: `radial-gradient(${colors.grid} 1.5px, transparent 1.5px)`,
-        backgroundSize: "22px 22px",
-      }}>
+      <div className="font-body min-h-screen w-full flex justify-center py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
         <style>{FONT_STYLE}</style>
-        <div className="max-w-md sm:max-w-xl lg:max-w-3xl mx-auto px-5 py-8">
-          {mode === "menu" && <MenuScreen setMode={setMode} lang={lang} setLang={setLang} />}
-          {mode === "online" && <OnlineGame lang={lang} onExit={() => setMode("menu")} />}
-          {mode === "practice" && <PracticeGame lang={lang} onExit={() => setMode("menu")} />}
+        <div className="flex w-full max-w-6xl shadow-2xl" style={{ clipPath: tornEdgePath(), background: colors.bg }}>
+          <SpiralBinding />
+          <div className="flex-1 min-w-0 relative px-5 sm:px-10 pt-6 pb-10" style={ruledBg(colors, 30)}>
+            {/* red margin rule, like a real notebook page */}
+            <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 56, width: 2, background: colors.margin, opacity: 0.6 }} />
+            <div className="max-w-md sm:max-w-2xl lg:max-w-5xl mx-auto">
+              {mode === "menu" && <MenuScreen setMode={setMode} lang={lang} setLang={setLang} />}
+              {mode === "online" && <OnlineGame lang={lang} onExit={() => setMode("menu")} />}
+              {mode === "practice" && <PracticeGame lang={lang} onExit={() => setMode("menu")} />}
+            </div>
+          </div>
         </div>
       </div>
     </ThemeContext.Provider>
   );
 }
 
+const DECORATIONS = [
+  { e: "🍎", top: "4%", left: "3%", size: 40, rot: -12 },
+  { e: "✏️", top: "8%", left: "90%", size: 44, rot: 18 },
+  { e: "🍌", top: "20%", left: "94%", size: 36, rot: -8 },
+  { e: "🌍", top: "34%", left: "2%", size: 42, rot: 6 },
+  { e: "🍇", top: "48%", left: "95%", size: 38, rot: 10 },
+  { e: "🦒", top: "60%", left: "1%", size: 40, rot: -6 },
+  { e: "🎨", top: "72%", left: "92%", size: 40, rot: -14 },
+  { e: "🍓", top: "84%", left: "4%", size: 36, rot: 12 },
+  { e: "⭐", top: "14%", left: "50%", size: 26, rot: 0 },
+  { e: "🏙️", top: "92%", left: "88%", size: 40, rot: -8 },
+];
+
+function CoverDecorations() {
+  const { theme } = useContext(ThemeContext);
+  return (
+    <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {DECORATIONS.map((d, i) => (
+        <span key={i} style={{
+          position: "absolute", top: d.top, left: d.left, fontSize: d.size,
+          transform: `rotate(${d.rot}deg)`, opacity: theme === "light" ? 0.22 : 0.16,
+        }}>{d.e}</span>
+      ))}
+    </div>
+  );
+}
+
+// example words pulled straight from the real bot dictionary — genuine variety, no hardcoded fake data
+function useGuideExamples(lang) {
+  const cats = [
+    { id: "country", letter: "A" }, { id: "name", letter: "B" }, { id: "animal", letter: "C" },
+    { id: "fruit", letter: "D" }, { id: "color", letter: "F" }, { id: "object", letter: "M" },
+  ];
+  return cats.map(({ id, letter }, i) => {
+    const idx = CATEGORY_IDS.indexOf(id);
+    const catLabel = LOCALIZED_CATEGORIES[lang]?.[idx] || id;
+    const word = botAnswerFor(lang, id, letter) || botAnswerFor("es", id, letter) || "…";
+    return { catLabel, letter, word, i };
+  });
+}
+
 function MenuScreen({ setMode, lang, setLang }) {
   const C = useColors();
+  const guide = useGuideExamples(lang);
+  const rules = t(lang, "howToPlay").split("\n");
+
   return (
-    <div>
-      <Header subtitle={t(lang, "appSubtitle")} />
-      <div className="flex gap-2 mb-4 justify-center flex-wrap">
+    <div className="relative">
+      <CoverDecorations />
+      <div className="relative flex items-start justify-between mb-2">
+        <div style={{ width: 32 }} />
+        <div className="flex-1" />
+        <HeaderThemeToggle />
+      </div>
+
+      <div className="relative text-center mb-2 py-4">
+        <h1 className="font-bubble text-6xl sm:text-7xl lg:text-8xl inline-block" style={{ color: C.red, transform: "rotate(-2deg)" }}>
+          ¡STOP!
+        </h1>
+        <p className="font-display text-2xl mt-1" style={{ color: C.ink, transform: "rotate(1deg)" }}>{t(lang, "appSubtitle")}</p>
+      </div>
+
+      <div className="flex gap-2 mb-6 justify-center flex-wrap relative">
         {LANGUAGES.map((l) => (
           <button key={l.code} onClick={() => setLang(l.code)}
             className="px-3 py-1 rounded-full text-xs font-body font-medium border"
@@ -289,7 +389,8 @@ function MenuScreen({ setMode, lang, setLang }) {
           </button>
         ))}
       </div>
-      <div className="sm:grid sm:grid-cols-2 sm:gap-4">
+
+      <div className="sm:grid sm:grid-cols-2 sm:gap-5 relative mb-2">
         <Card>
           <div className="flex items-center gap-2 mb-2"><Wifi size={18} color={C.red} /><h2 className="font-display text-2xl">{t(lang, "menuOnlineTitle")}</h2></div>
           <p className="text-sm font-body mb-3" style={{ color: C.muted }}>{t(lang, "menuOnlineDesc")}</p>
@@ -301,29 +402,86 @@ function MenuScreen({ setMode, lang, setLang }) {
           <PrimaryButton onClick={() => setMode("practice")} colorKey="chalk" icon={<Bot size={18} />}>{t(lang, "menuPracticeBtn")}</PrimaryButton>
         </Card>
       </div>
+
+      <div className="lg:grid lg:grid-cols-5 lg:gap-5 relative">
+        <div className="lg:col-span-3">
+          <Card>
+            <h3 className="font-display text-2xl mb-3" style={{ color: C.ink }}>{t(lang, "howToPlayTitle")}</h3>
+            <div className="space-y-2">
+              {rules.map((line, i) => (
+                <p key={i} className="text-sm font-body leading-relaxed" style={{ color: C.text }}>{line}</p>
+              ))}
+            </div>
+          </Card>
+        </div>
+        <div className="lg:col-span-2">
+          <Card>
+            <h3 className="font-display text-2xl mb-3" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
+            <div className="flex flex-wrap gap-2">
+              {guide.map((g) => (
+                <span key={g.catLabel} className="text-xs font-body px-2.5 py-1.5" style={chipStyle(g.i)}>
+                  {g.letter} · {g.catLabel}: {g.word}
+                </span>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-// shared writing grid — same look in practice and online, Enter jumps fields
+function HeaderThemeToggle() {
+  const { theme, toggle } = useContext(ThemeContext);
+  const C = useColors();
+  return (
+    <button onClick={toggle} className="p-2 rounded-full" style={{ color: C.text, border: `1px solid ${C.rule}` }}>
+      {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+    </button>
+  );
+}
+
 function AnswerGrid({ categories, answers, onChange, inputRefs }) {
   const C = useColors();
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {categories.map((cat, i) => (
         <div key={cat}>
-          <span className="inline-block text-xs font-body font-semibold px-2 py-0.5 mb-1" style={chipStyle(i)}>{cat}</span>
+          <span className="inline-block text-xs font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
           <input
             ref={(el) => (inputRefs.current[i] = el)}
             value={answers[cat] || ""}
             onChange={(e) => onChange(cat, e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNext(inputRefs, i); } }}
             className="w-full rounded-lg px-3 py-2 outline-none font-body text-sm"
-            style={{ background: C.inputBg, border: `1px solid ${C.grid}`, color: C.text }}
+            style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }}
           />
         </div>
       ))}
     </div>
+  );
+}
+
+// letter + timer + STOP, meant to sit as a slim sidebar next to the answer grid on wide screens
+function RoundStatusPanel({ lang, letter, elapsedSecs, canStop, onStop, hintKey }) {
+  const C = useColors();
+  return (
+    <Card className="lg:sticky lg:top-8">
+      <p className="text-xs font-body mb-1" style={{ color: C.muted }}>{t(lang, "letter")}</p>
+      <div className="font-display flex items-center justify-center rounded-xl mb-3"
+        style={{ width: 84, height: 84, fontSize: 40, background: C.red, color: "#2f2a22" }}>
+        {letter}
+      </div>
+      <div className="flex items-center gap-1 text-sm font-body mb-3" style={{ color: C.muted }}>
+        <Clock size={14} /> {elapsedSecs}s
+      </div>
+      <button onClick={onStop} disabled={!canStop}
+        className="w-full font-display text-xl rounded-xl py-3 disabled:opacity-30"
+        style={{ background: C.red, color: "#2f2a22", boxShadow: "0 3px 0 rgba(0,0,0,0.18)" }}>
+        {t(lang, "stopBtn")}
+      </button>
+      {!canStop && <p className="text-xs font-body mt-2" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
+    </Card>
   );
 }
 
@@ -334,10 +492,10 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
       <h2 className="font-display text-2xl mb-1" style={{ color: C.red }}>{t(lang, "resultsTitle")} {letter}</h2>
       {stoppedByLabel && <p className="text-xs font-body mb-1" style={{ color: C.red }}>{stoppedByLabel}</p>}
       <p className="text-xs font-body mb-4" style={{ color: C.muted }}>{t(lang, "tapToInvalidate")}</p>
-      <div className="sm:grid sm:grid-cols-2 sm:gap-x-6">
+      <div className="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6">
         {categories.map((cat, i) => (
           <div key={cat} className="mb-4">
-            <span className="inline-block text-sm font-body font-semibold px-2 py-0.5 mb-1" style={chipStyle(i)}>{cat}</span>
+            <span className="inline-block text-sm font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
             <div className="max-h-56 overflow-y-auto pr-1">
               {players.map((p) => {
                 const val = getAnswer(p.id, cat);
@@ -364,7 +522,7 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
 function RoundPointsCard({ lang, players, roundScores }) {
   const C = useColors();
   return (
-    <Card>
+    <Card className="lg:sticky lg:top-8">
       <h3 className="font-display text-xl mb-2" style={{ color: C.ink }}>{t(lang, "roundPoints")}</h3>
       {players.map((p) => (
         <div key={p.id} className="flex justify-between text-sm font-body py-1">
@@ -397,8 +555,7 @@ function GameOverBlock({ lang, sortedTotals, totals, onReset }) {
 }
 
 // ============================================================
-// PRACTICE MODE — vs local bots. No timer: a stopwatch tracks your time
-// and congratulates you when you beat your own best.
+// PRACTICE MODE
 // ============================================================
 function PracticeGame({ lang, onExit }) {
   const C = useColors();
@@ -503,32 +660,38 @@ function PracticeGame({ lang, onExit }) {
       <Header subtitle={t(lang, "menuPracticeTitle")} />
 
       {phase === "setup" && (
-        <div>
-          <Card>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-display text-xl" style={{ color: C.ink }}>{t(lang, "numberOfBots")}</h2>
-              <span className="font-display text-xl" style={{ color: C.red }}>{numBots}</span>
-            </div>
-            <input type="range" min="1" max="3" step="1" value={numBots} onChange={(e) => setNumBots(Number(e.target.value))} className="w-full" />
-          </Card>
-          <Card>
-            <h2 className="font-display text-xl mb-2" style={{ color: C.ink }}>{t(lang, "difficulty")}</h2>
-            <div className="flex gap-2">
-              {["easy", "medium", "hard"].map((d) => (
-                <button key={d} onClick={() => setDifficulty(d)}
-                  className="flex-1 rounded-lg py-2 text-sm font-body font-medium border"
-                  style={{ borderColor: C.ink, background: difficulty === d ? C.ink : "transparent", color: difficulty === d ? "#fff" : C.ink }}>
-                  {t(lang, `difficulty${d[0].toUpperCase()}${d.slice(1)}`)}
-                </button>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            <h2 className="font-display text-xl mb-3" style={{ color: C.ink }}>{t(lang, "categories")}</h2>
-            <CategoryEditor lang={lang} categories={categories} setCategories={setCategories} />
-          </Card>
-          <p className="text-xs font-body text-center mb-3" style={{ color: C.muted }}>{t(lang, "noTimeLimitHint")}</p>
-          <PrimaryButton onClick={startGame} colorKey="chalk" disabled={categories.length < 1} icon={<Play size={20} />}>{t(lang, "startGame")}</PrimaryButton>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+          <div>
+            <Card>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-display text-xl" style={{ color: C.ink }}>{t(lang, "numberOfBots")}</h2>
+                <span className="font-display text-xl" style={{ color: C.red }}>{numBots}</span>
+              </div>
+              <input type="range" min="1" max="3" step="1" value={numBots} onChange={(e) => setNumBots(Number(e.target.value))} className="w-full" />
+            </Card>
+            <Card>
+              <h2 className="font-display text-xl mb-2" style={{ color: C.ink }}>{t(lang, "difficulty")}</h2>
+              <div className="flex gap-2">
+                {["easy", "medium", "hard"].map((d) => (
+                  <button key={d} onClick={() => setDifficulty(d)}
+                    className="flex-1 rounded-lg py-2 text-sm font-body font-medium border"
+                    style={{ borderColor: C.ink, background: difficulty === d ? C.ink : "transparent", color: difficulty === d ? "#fff" : C.ink }}>
+                    {t(lang, `difficulty${d[0].toUpperCase()}${d.slice(1)}`)}
+                  </button>
+                ))}
+              </div>
+            </Card>
+          </div>
+          <div>
+            <Card>
+              <h2 className="font-display text-xl mb-3" style={{ color: C.ink }}>{t(lang, "categories")}</h2>
+              <CategoryEditor lang={lang} categories={categories} setCategories={setCategories} />
+            </Card>
+          </div>
+          <div className="lg:col-span-2">
+            <p className="text-xs font-body text-center mb-3" style={{ color: C.muted }}>{t(lang, "noTimeLimitHint")}</p>
+            <PrimaryButton onClick={startGame} colorKey="chalk" disabled={categories.length < 1} icon={<Play size={20} />}>{t(lang, "startGame")}</PrimaryButton>
+          </div>
         </div>
       )}
 
@@ -562,29 +725,30 @@ function PracticeGame({ lang, onExit }) {
         </div>
       )}
 
-      {phase === "playerTurn" && (
+      {phase === "playerTurn" && !started && (
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-sm font-body" style={{ color: C.muted }}>{t(lang, "letter")}</span>
             <span className="font-display rounded-lg px-3 py-1 text-2xl" style={{ background: C.red, color: "#2f2a22" }}>{currentLetter}</span>
           </div>
-          {!started ? (
-            <PrimaryButton colorKey="green" icon={<Play size={18} />} onClick={() => { setStarted(true); setTimeout(() => inputRefs.current[0]?.focus(), 50); }}>
-              {t(lang, "ready")}
-            </PrimaryButton>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1 text-sm font-body" style={{ color: C.muted }}><Clock size={14} /> {elapsed}s</div>
-                <button onClick={finishRound} disabled={!canCallStop(humanAnswers, categories)}
-                  className="text-sm font-display rounded-lg px-3 py-1 disabled:opacity-30"
-                  style={{ background: C.red, color: "#2f2a22" }}>{t(lang, "stopBtn")}</button>
-              </div>
-              {!canCallStop(humanAnswers, categories) && <p className="text-xs font-body mb-3" style={{ color: C.muted }}>{t(lang, "stopHint")}</p>}
-              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} />
-            </>
-          )}
+          <PrimaryButton colorKey="green" icon={<Play size={18} />} onClick={() => { setStarted(true); setTimeout(() => inputRefs.current[0]?.focus(), 50); }}>
+            {t(lang, "ready")}
+          </PrimaryButton>
         </Card>
+      )}
+
+      {phase === "playerTurn" && started && (
+        <div className="lg:flex lg:gap-5 lg:items-start">
+          <div className="lg:w-64 lg:flex-shrink-0">
+            <RoundStatusPanel lang={lang} letter={currentLetter} elapsedSecs={elapsed}
+              canStop={canCallStop(humanAnswers, categories)} onStop={finishRound} hintKey="stopHint" />
+          </div>
+          <div className="lg:flex-1">
+            <Card>
+              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} />
+            </Card>
+          </div>
+        </div>
       )}
 
       {phase === "reveal" && currentLetter && (
@@ -599,9 +763,11 @@ function PracticeGame({ lang, onExit }) {
           {lastElapsed !== null && (
             <p className="text-xs font-body text-center mb-2" style={{ color: C.muted }}>{t(lang, "yourTime")}: {lastElapsed}s</p>
           )}
-          <RevealList lang={lang} letter={currentLetter} categories={categories} players={fakePlayers}
-            getAnswer={getAnswer} disabledKeys={disabledKeys} toggleInvalid={toggleInvalid} />
-          <RoundPointsCard lang={lang} players={fakePlayers} roundScores={roundScores} />
+          <div className="lg:flex lg:gap-5 lg:items-start">
+            <div className="lg:flex-1"><RevealList lang={lang} letter={currentLetter} categories={categories} players={fakePlayers}
+              getAnswer={getAnswer} disabledKeys={disabledKeys} toggleInvalid={toggleInvalid} /></div>
+            <div className="lg:w-64 lg:flex-shrink-0"><RoundPointsCard lang={lang} players={fakePlayers} roundScores={roundScores} /></div>
+          </div>
           <PrimaryButton onClick={confirmRoundScores} icon={<ChevronRight size={18} />}>{t(lang, "confirmAndContinue")}</PrimaryButton>
         </>
       )}
@@ -612,11 +778,7 @@ function PracticeGame({ lang, onExit }) {
 }
 
 // ============================================================
-// ONLINE MODE — Supabase table + Realtime push. No timer: everyone writes
-// the instant the letter lands, and it's over for everyone the instant
-// anyone calls STOP. Rendering is driven entirely by room.phase, pushed
-// live to every connected client (this is what the old "stuck on confirm"
-// bug was missing — a local screen flag that never learned about it).
+// ONLINE MODE
 // ============================================================
 function OnlineGame({ lang, onExit }) {
   const C = useColors();
@@ -638,7 +800,6 @@ function OnlineGame({ lang, onExit }) {
   const unsubRef = useRef(null);
   const inputRefs = useRef([]);
 
-  // only used for the optional "elapsed" display during writing, never for ending a round
   useEffect(() => {
     const tmr = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(tmr);
@@ -654,8 +815,6 @@ function OnlineGame({ lang, onExit }) {
     if (room?.round_id && submittedRound !== room.round_id) setMyAnswers({});
   }, [room?.round_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // whoever didn't personally call STOP still gets auto-submitted the instant
-  // the round flips to reveal, so nobody scores zero just for not clicking a button
   useEffect(() => {
     if (room?.phase === "reveal" && room?.round_id && submittedRound !== room.round_id) {
       submitAnswer(roomCode, room.round_id, myId, myAnswers).then(() => setSubmittedRound(room.round_id));
@@ -684,7 +843,6 @@ function OnlineGame({ lang, onExit }) {
     } catch (e) { setErrorMsg(t(lang, "roomNotFound")); }
   };
 
-  // letter lands -> everyone starts writing immediately, no confirmation step for anyone else
   const hostLaunchRound = async (letter) => {
     setHostSpinning(false);
     await updateRoomState(roomCode, {
@@ -699,7 +857,6 @@ function OnlineGame({ lang, onExit }) {
     setSubmittedRound(room.round_id);
   };
 
-  // the only way a round ends: any participant can call it once their sheet is nearly full
   const callStop = async () => {
     await mySubmit();
     await updateRoomState(roomCode, { phase: "reveal", stopped_by: myName });
@@ -736,17 +893,16 @@ function OnlineGame({ lang, onExit }) {
   const playerList = Object.entries(room?.players || {}).map(([id, v]) => ({ id, name: v.name }));
   const sortedTotals = [...playerList].sort((a, b) => (room?.totals?.[b.id] || 0) - (room?.totals?.[a.id] || 0));
 
-  // ---------- not in a room yet ----------
   if (!inRoom) {
     return (
       <div>
         <BackBar onBack={onExit} label={t(lang, "mainMenu")} />
         <Header subtitle={t(lang, "menuOnlineTitle")} />
-        <div className="sm:grid sm:grid-cols-2 sm:gap-4 sm:items-start">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
           <Card>
             <label className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "yourName")}</label>
             <input value={myName} onChange={(e) => setMyName(e.target.value)} placeholder={t(lang, "namePlaceholder")}
-              className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: C.inputBg, border: `1px solid ${C.grid}`, color: C.text }} />
+              className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
             <h3 className="font-display text-lg mb-2" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
             <div className="mb-4"><CategoryEditor lang={lang} categories={newRoomCategories} setCategories={setNewRoomCategories} /></div>
             <PrimaryButton onClick={createNewRoom} disabled={!myName.trim() || newRoomCategories.length < 1} icon={<Plus size={18} />}>{t(lang, "createRoom")}</PrimaryButton>
@@ -755,7 +911,7 @@ function OnlineGame({ lang, onExit }) {
             <label className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "roomCode")}</label>
             <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t(lang, "joinCodePlaceholder")} maxLength={4}
               className="w-full rounded-lg px-3 py-2 mt-1 mb-2 outline-none font-body text-sm tracking-widest text-center uppercase"
-              style={{ background: C.inputBg, border: `1px solid ${C.grid}`, color: C.text }} />
+              style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
             {errorMsg && <p className="text-xs font-body mb-2" style={{ color: C.red }}>{errorMsg}</p>}
             <PrimaryButton onClick={joinExistingRoom} disabled={!myName.trim() || joinCode.trim().length < 4} colorKey="green" icon={<Wifi size={18} />}>
               {t(lang, "joinRoom")}
@@ -770,28 +926,29 @@ function OnlineGame({ lang, onExit }) {
     return <div><BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} /><Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "loadingRoom")}</p></Card></div>;
   }
 
-  // ---------- lobby (room.phase === 'lobby', pushed live to everyone) ----------
   if (room.phase === "lobby") {
     return (
       <div>
         <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
         <Header subtitle={t(lang, "lobbyTitle")} />
-        <Card>
-          <p className="text-xs font-body mb-1 text-center" style={{ color: C.muted }}>{t(lang, "roomCode")}</p>
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="font-display text-5xl tracking-widest" style={{ color: C.red }}>{roomCode}</span>
-            <button onClick={() => { try { navigator.clipboard.writeText(roomCode); } catch {} }} className="p-2 rounded-lg" style={{ background: C.inputBg, border: `1px solid ${C.grid}` }}>
-              <Copy size={14} color={C.muted} />
-            </button>
-          </div>
-          <p className="text-center text-xs font-body" style={{ color: C.muted }}>{t(lang, "shareCode")}</p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 mb-2"><Users size={16} color={C.ink} /><h3 className="font-display text-xl" style={{ color: C.ink }}>{t(lang, "players")} ({playerList.length})</h3></div>
-          <div className="max-h-64 overflow-y-auto pr-1">
-            {playerList.map((p) => <p key={p.id} className="text-sm font-body py-1">{p.name}{p.id === myId ? ` ${t(lang, "you")}` : ""}</p>)}
-          </div>
-        </Card>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+          <Card>
+            <p className="text-xs font-body mb-1 text-center" style={{ color: C.muted }}>{t(lang, "roomCode")}</p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="font-display text-5xl tracking-widest" style={{ color: C.red }}>{roomCode}</span>
+              <button onClick={() => { try { navigator.clipboard.writeText(roomCode); } catch {} }} className="p-2 rounded-lg" style={{ background: C.inputBg, border: `1px solid ${C.rule}` }}>
+                <Copy size={14} color={C.muted} />
+              </button>
+            </div>
+            <p className="text-center text-xs font-body" style={{ color: C.muted }}>{t(lang, "shareCode")}</p>
+          </Card>
+          <Card>
+            <div className="flex items-center gap-2 mb-2"><Users size={16} color={C.ink} /><h3 className="font-display text-xl" style={{ color: C.ink }}>{t(lang, "players")} ({playerList.length})</h3></div>
+            <div className="max-h-64 overflow-y-auto pr-1">
+              {playerList.map((p) => <p key={p.id} className="text-sm font-body py-1">{p.name}{p.id === myId ? ` ${t(lang, "you")}` : ""}</p>)}
+            </div>
+          </Card>
+        </div>
         {isHost ? (
           !hostSpinning ? (
             <PrimaryButton onClick={() => setHostSpinning(true)} icon={<Play size={20} />}>{t(lang, "spinFirstLetter")}</PrimaryButton>
@@ -805,7 +962,6 @@ function OnlineGame({ lang, onExit }) {
     );
   }
 
-  // ---------- game over ----------
   if (room.phase === "gameover") {
     return (
       <div>
@@ -824,7 +980,6 @@ function OnlineGame({ lang, onExit }) {
     );
   }
 
-  // ---------- active round: writing (room.phase === 'active') ----------
   if (room.phase === "active") {
     if (!room.letter) {
       return <div><BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} /><Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "waitingFirstLetter")}</p></Card></div>;
@@ -833,37 +988,31 @@ function OnlineGame({ lang, onExit }) {
     return (
       <div>
         <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-body" style={{ color: C.muted }}>{t(lang, "letter")}</span>
-              <span className="font-display rounded-lg px-3 py-1 text-2xl" style={{ background: C.red, color: "#2f2a22" }}>{room.letter}</span>
-            </div>
-            <div className="flex items-center gap-1 text-sm font-body" style={{ color: C.muted }}><Clock size={14} /> {elapsedSecs}s</div>
+        <div className="lg:flex lg:gap-5 lg:items-start">
+          <div className="lg:w-64 lg:flex-shrink-0">
+            <RoundStatusPanel lang={lang} letter={room.letter} elapsedSecs={elapsedSecs}
+              canStop={canCallStop(myAnswers, room.categories)} onStop={callStop} hintKey="stopHintAll" />
           </div>
-          <div className="flex justify-end mb-3">
-            <button onClick={callStop} disabled={!canCallStop(myAnswers, room.categories)}
-              className="text-sm font-display rounded-lg px-4 py-2 disabled:opacity-30"
-              style={{ background: C.red, color: "#2f2a22" }}>{t(lang, "stopBtn")}</button>
+          <div className="lg:flex-1">
+            <Card>
+              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} />
+            </Card>
           </div>
-          {!canCallStop(myAnswers, room.categories) && (
-            <p className="text-xs font-body mb-3" style={{ color: C.muted }}>{t(lang, "stopHintAll")}</p>
-          )}
-          <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} />
-        </Card>
+        </div>
       </div>
     );
   }
 
-  // ---------- reveal ----------
   const roundScores = computeRoundScores();
   const stoppedByLabel = room.stopped_by ? `${room.stopped_by} ${t(lang, "stoppedRoundBy")}` : null;
   return (
     <div>
       <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
-      <RevealList lang={lang} letter={room.letter} categories={room.categories} players={playerList}
-        getAnswer={getRoundAnswer} disabledKeys={getOverrides()} toggleInvalid={onToggleOverride} stoppedByLabel={stoppedByLabel} />
-      <RoundPointsCard lang={lang} players={playerList} roundScores={roundScores} />
+      <div className="lg:flex lg:gap-5 lg:items-start">
+        <div className="lg:flex-1"><RevealList lang={lang} letter={room.letter} categories={room.categories} players={playerList}
+          getAnswer={getRoundAnswer} disabledKeys={getOverrides()} toggleInvalid={onToggleOverride} stoppedByLabel={stoppedByLabel} /></div>
+        <div className="lg:w-64 lg:flex-shrink-0"><RoundPointsCard lang={lang} players={playerList} roundScores={roundScores} /></div>
+      </div>
       {isHost ? (
         !hostSpinning ? (
           <>
