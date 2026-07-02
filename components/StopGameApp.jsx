@@ -2,11 +2,11 @@
 import React, { useState, useRef, useEffect, useContext, createContext } from "react";
 import {
   Plus, X, Play, RotateCcw, Check, Trophy, Clock, ChevronRight,
-  Users, Wifi, Copy, ArrowLeft, Bot, Sun, Moon, Sparkles,
+  Users, Wifi, Copy, ArrowLeft, Bot, Sun, Moon, Sparkles, MessageCircle, Send,
 } from "lucide-react";
 import {
   createRoom, fetchRoom, joinRoom, updateRoomState,
-  submitAnswer, toggleOverride, addTotals, subscribeRoom,
+  submitAnswer, toggleOverride, addTotals, subscribeRoom, sendChatMessage,
 } from "../lib/gameRoom";
 import { t, LANGUAGES, DEFAULT_CATEGORIES as LOCALIZED_CATEGORIES, CATEGORY_IDS, SUGGESTED_CATEGORIES } from "../lib/i18n";
 import { botAnswerFor } from "../lib/botWordbank";
@@ -977,6 +977,60 @@ function PracticeGame({ lang, onExit }) {
   );
 }
 
+// floating chat, available throughout the room's lifecycle
+function RoomChat({ lang, messages, myName, chatText, setChatText, onSend }) {
+  const C = useColors();
+  const [open, setOpen] = useState(false);
+  const endRef = useRef(null);
+  useEffect(() => {
+    if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, open]);
+
+  return (
+    <>
+      <button onClick={() => setOpen((o) => !o)}
+        className="paper-lift fixed z-50 flex items-center justify-center rounded-full bottom-24 sm:bottom-6 right-4"
+        style={{ width: 52, height: 52, background: C.chalk, boxShadow: "2px 4px 10px rgba(0,0,0,0.25)" }}>
+        <MessageCircle size={22} color="#2f2a22" />
+        {!open && messages.length > 0 && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-xs font-body font-bold"
+            style={{ width: 20, height: 20, background: C.red, color: "#2f2a22" }}>{messages.length}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="fixed z-50 bottom-24 sm:bottom-24 right-4 left-4 sm:left-auto sm:w-80 flex flex-col"
+          style={{ maxHeight: 380, background: "#fff", borderRadius: 12, border: `1px solid ${C.rule}`, boxShadow: "3px 8px 20px rgba(0,0,0,0.3)" }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.rule}` }}>
+            <h4 className="font-display text-lg" style={{ color: "#2f2a22" }}>{t(lang, "chatTitle")}</h4>
+            <button onClick={() => setOpen(false)}><X size={18} color="#8c8577" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-2" style={{ minHeight: 120 }}>
+            {messages.length === 0 && <p className="text-xs font-body text-center mt-6" style={{ color: "#8c8577" }}>{t(lang, "chatEmpty")}</p>}
+            {messages.map((m) => (
+              <div key={m.id} className="mb-2 text-sm font-body">
+                <span className="font-semibold" style={{ color: m.name === myName ? "#b5352f" : "#2f2a22" }}>{m.name}: </span>
+                <span style={{ color: "#2f2a22" }}>{m.text}</span>
+              </div>
+            ))}
+            <div ref={endRef} />
+          </div>
+          <div className="flex gap-2 px-3 py-3" style={{ borderTop: `1px solid ${C.rule}` }}>
+            <input value={chatText} onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onSend()}
+              placeholder={t(lang, "chatPlaceholder")}
+              className="flex-1 rounded-lg px-3 py-2 outline-none font-body text-sm"
+              style={{ background: "#f5f5f0", border: `1px solid ${C.rule}`, color: "#2f2a22" }} />
+            <button onClick={onSend} className="rounded-lg px-3 flex items-center justify-center" style={{ background: C.red }}>
+              <Send size={16} color="#2f2a22" />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ============================================================
 // ONLINE MODE
 // ============================================================
@@ -996,6 +1050,7 @@ function OnlineGame({ lang, onExit }) {
   const [submittedRound, setSubmittedRound] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [hostSpinning, setHostSpinning] = useState(false);
+  const [chatText, setChatText] = useState("");
 
   const unsubRef = useRef(null);
   const inputRefs = useRef([]);
@@ -1090,6 +1145,13 @@ function OnlineGame({ lang, onExit }) {
     if (room?.phase === "reveal") await addTotals(roomCode, computeRoundScores());
     await updateRoomState(roomCode, { phase: "gameover" });
   };
+  const sendChatMsg = async () => {
+    const text = chatText.trim();
+    if (!text || !roomCode) return;
+    setChatText("");
+    try { await sendChatMessage(roomCode, { id: genId(), name: myName, text, ts: Date.now() }); } catch (e) {}
+  };
+
   const leaveRoom = () => {
     unsubRef.current && unsubRef.current();
     setInRoom(false); setRoomCode(null); setRoom(null); setMyAnswers({}); setSubmittedRound(null); setIsHost(false);
@@ -1163,6 +1225,7 @@ function OnlineGame({ lang, onExit }) {
         ) : (
           <Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "waitingHost")}</p></Card>
         )}
+        <RoomChat lang={lang} messages={room?.chat || []} myName={myName} chatText={chatText} setChatText={setChatText} onSend={sendChatMsg} />
       </div>
     );
   }
@@ -1181,6 +1244,7 @@ function OnlineGame({ lang, onExit }) {
           ))}
         </Card>
         <PrimaryButton onClick={leaveRoom} colorKey="green" icon={<RotateCcw size={18} />}>{t(lang, "backToMenu")}</PrimaryButton>
+        <RoomChat lang={lang} messages={room?.chat || []} myName={myName} chatText={chatText} setChatText={setChatText} onSend={sendChatMsg} />
       </div>
     );
   }
@@ -1204,6 +1268,7 @@ function OnlineGame({ lang, onExit }) {
             </Card>
           </div>
         </div>
+        <RoomChat lang={lang} messages={room?.chat || []} myName={myName} chatText={chatText} setChatText={setChatText} onSend={sendChatMsg} />
       </div>
     );
   }
@@ -1230,6 +1295,7 @@ function OnlineGame({ lang, onExit }) {
       ) : (
         <Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "waitingOthers")}</p></Card>
       )}
+      <RoomChat lang={lang} messages={room?.chat || []} myName={myName} chatText={chatText} setChatText={setChatText} onSend={sendChatMsg} />
     </div>
   );
 }

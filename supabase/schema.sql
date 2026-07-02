@@ -1,5 +1,20 @@
 -- Run this once in your Supabase project's SQL editor.
 -- Safe to re-run: uses "if not exists" / "or replace" where possible.
+-- Adds room chat (safe to run even if game_rooms already exists from before).
+
+alter table game_rooms add column if not exists chat jsonb not null default '[]'::jsonb;
+
+create or replace function add_chat_message(p_code text, p_message jsonb)
+returns void as $$
+begin
+  update game_rooms
+  set chat = case
+    when jsonb_array_length(chat) >= 50 then (chat - 0) || jsonb_build_array(p_message)
+    else chat || jsonb_build_array(p_message)
+  end
+  where code = p_code;
+end;
+$$ language plpgsql;
 
 create table if not exists game_rooms (
   code text primary key,
