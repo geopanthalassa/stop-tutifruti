@@ -123,21 +123,6 @@ function tornEdgePath(teeth = 26, amp = 7) {
   return `polygon(${pts.join(",")})`;
 }
 // the spiral-ring binding strip running down the left edge of the page
-function SpiralBinding() {
-  const C = useColors();
-  return (
-    <div
-      className="hidden sm:block flex-shrink-0"
-      style={{
-        width: 26,
-        backgroundImage: `radial-gradient(circle, transparent 6px, ${C.ring} 6px, ${C.ring} 9px, transparent 9px)`,
-        backgroundSize: "100% 30px",
-        backgroundRepeat: "repeat-y",
-        backgroundPosition: "center top",
-      }}
-    />
-  );
-}
 function Header({ subtitle }) {
   const { theme, toggle } = useContext(ThemeContext);
   const C = useColors();
@@ -159,7 +144,7 @@ function Card({ children, className = "", color, rotate = 0 }) {
   const bg = color || C.card;
   return (
     <div className={`paper-lift relative mb-4 ${color ? "text-center" : "text-left"} ${className}`} style={{
-      background: bg, ...(color ? {} : ruledBg(C, 30)), padding: "24px 20px 20px",
+      background: bg, ...(color ? {} : ruledBg(C, 30)), padding: "30px 26px 26px",
       transform: rotate ? `rotate(${rotate}deg)` : undefined,
       borderRadius: color ? 2 : 12,
       boxShadow: "3px 6px 14px rgba(0,0,0,0.16)",
@@ -364,12 +349,18 @@ export default function StopGameApp() {
     <ThemeContext.Provider value={{ colors, theme, toggle }}>
       <div className="font-body min-h-screen w-full py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
         <style>{FONT_STYLE}</style>
-        <div className="flex max-w-7xl mx-auto shadow-2xl" style={{ clipPath: tornEdgePath(), background: colors.bg }}>
-          <SpiralBinding />
-          <div className="flex-1 min-w-0 relative px-5 pl-8 sm:pl-20 sm:pr-10 pt-6 pb-10" style={ruledBg(colors, 30)}>
-            {/* red margin rule, like a real notebook page */}
-            <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 48, width: 2, background: colors.margin, opacity: 0.6 }} />
-            <div className="max-w-md sm:max-w-2xl lg:max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto shadow-2xl relative" style={{
+          clipPath: tornEdgePath(),
+          backgroundColor: colors.bg,
+          backgroundImage: `radial-gradient(circle, transparent 6px, ${colors.ring} 6px, ${colors.ring} 9px, transparent 9px), repeating-linear-gradient(to bottom, transparent 0px, transparent 29px, ${colors.rule} 30px)`,
+          backgroundPosition: "13px 0, 0 0",
+          backgroundSize: "26px 30px, 100% 30px",
+          backgroundRepeat: "repeat-y, repeat",
+        }}>
+          {/* red margin rule, like a real notebook page */}
+          <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 48, width: 2, background: colors.margin, opacity: 0.6 }} />
+          <div className="px-5 pl-8 sm:pl-16 sm:pr-10 pt-6 pb-10">
+            <div className="max-w-md sm:max-w-2xl mx-auto">
               {mode === "menu" && <MenuScreen setMode={setMode} lang={lang} setLang={setLang} />}
               {mode === "online" && <OnlineGame lang={lang} onExit={() => setMode("menu")} />}
               {mode === "practice" && <PracticeGame lang={lang} onExit={() => setMode("menu")} />}
@@ -451,7 +442,6 @@ function ScrollCard({ children, color, className = "" }) {
 
 function MenuScreen({ setMode, lang, setLang }) {
   const C = useColors();
-  const guide = useGuideExamples(lang);
   const rules = t(lang, "howToPlay").split("\n");
 
   return (
@@ -477,7 +467,7 @@ function MenuScreen({ setMode, lang, setLang }) {
       </div>
 
       {/* language selector — folder tabs, not pills */}
-      <div className="flex gap-1 mb-10 relative">
+      <div className="flex gap-1 mb-10 relative justify-center flex-wrap">
         {LANGUAGES.map((l) => {
           const active = lang === l.code;
           return (
@@ -529,10 +519,8 @@ function MenuScreen({ setMode, lang, setLang }) {
         <div className="lg:col-span-2 mt-6 lg:mt-0">
           <h3 className="font-display text-2xl mb-3 text-center lg:text-left" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
           <div className="flex flex-wrap justify-center lg:justify-start gap-2">
-            {guide.map((g) => (
-              <span key={g.catLabel} className="text-xs font-body px-2.5 py-1.5" style={chipStyle(g.i)}>
-                {g.letter} · {g.catLabel}: {g.word}
-              </span>
+            {LOCALIZED_CATEGORIES[lang].map((cat, i) => (
+              <CategoryChip key={cat} i={i} cat={cat} lang={lang} />
             ))}
           </div>
         </div>
@@ -566,7 +554,7 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
       <div className="sm:hidden space-y-3">
         {categories.map((cat, i) => (
           <div key={cat}>
-            <CategoryChip i={i} cat={cat} lang={lang} tag="div" />
+            <div className="text-center"><CategoryChip i={i} cat={cat} lang={lang} tag="div" /></div>
             <input
               ref={(el) => (inputRefs.current[i] = el)}
               value={answers[cat] || ""}
@@ -585,12 +573,12 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
           <thead>
             <tr>
               {letter && (
-                <th className="p-0 pb-2 text-left" style={{ minWidth: 60 }}>
+                <th className="p-0 pb-2 text-center" style={{ minWidth: 60 }}>
                   <span className="inline-block text-xs font-body px-2.5 py-1 font-bold" style={{ background: C.red, color: "#2f2a22", borderRadius: "10px 10px 10px 2px" }}>L</span>
                 </th>
               )}
               {categories.map((cat, i) => (
-                <th key={cat} className="p-0 pb-2 text-left" style={{ minWidth: 130 }}>
+                <th key={cat} className="p-0 pb-2 text-center" style={{ minWidth: 130 }}>
                   <CategoryChip i={i} cat={cat} lang={lang} />
                 </th>
               ))}
@@ -683,7 +671,7 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
       <div className="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6">
         {categories.map((cat, i) => (
           <div key={cat} className="mb-4">
-            <CategoryChip i={i} cat={cat} lang={lang} tag="div" />
+            <div className="text-center"><CategoryChip i={i} cat={cat} lang={lang} tag="div" /></div>
             <div className="max-h-56 overflow-y-auto pr-1 mt-1">
               {players.map((p) => {
                 const val = getAnswer(p.id, cat);
@@ -886,7 +874,7 @@ function PracticeGame({ lang, onExit }) {
       )}
 
       {phase === "spin" && (
-        <div>
+        <div className="max-w-sm mx-auto">
           <Card color="#ffd3dc" rotate={-1}>
             <LetterSpinner usedLetters={usedLetters} onLanded={onLetterLanded} lang={lang} />
             {usedLetters.length > 0 && <p className="text-center text-xs font-body mt-1" style={{ color: "#4a4438" }}>{t(lang, "usedLetters")} {usedLetters.join(", ")}</p>}
@@ -1132,24 +1120,28 @@ function OnlineGame({ lang, onExit }) {
       <div>
         <BackBar onBack={onExit} label={t(lang, "mainMenu")} />
         <Header subtitle={t(lang, "menuOnlineTitle")} />
-        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
-          <Card color="#ffd3dc" rotate={-1}>
-            <div className="text-left">
-              <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "yourName")}</label>
-              <input value={myName} onChange={(e) => setMyName(e.target.value)} placeholder={t(lang, "namePlaceholder")}
-                className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
-              <h3 className="font-display text-lg mb-2" style={{ color: "#2f2a22" }}>{t(lang, "categories")}</h3>
-              <div className="mb-4"><CategoryEditor lang={lang} categories={newRoomCategories} setCategories={setNewRoomCategories} /></div>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-stretch">
+          <Card color="#ffd3dc" rotate={-1} className="h-full">
+            <div className="text-left h-full flex flex-col">
+              <div className="flex-1">
+                <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "yourName")}</label>
+                <input value={myName} onChange={(e) => setMyName(e.target.value)} placeholder={t(lang, "namePlaceholder")}
+                  className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
+                <h3 className="font-display text-lg mb-2" style={{ color: "#2f2a22" }}>{t(lang, "categories")}</h3>
+                <div className="mb-4"><CategoryEditor lang={lang} categories={newRoomCategories} setCategories={setNewRoomCategories} /></div>
+              </div>
               <PrimaryButton onClick={createNewRoom} disabled={!myName.trim() || newRoomCategories.length < 1} icon={<Plus size={18} />}>{t(lang, "createRoom")}</PrimaryButton>
             </div>
           </Card>
-          <Card color="#a8ddd0" rotate={1}>
-            <div className="text-left">
-              <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "roomCode")}</label>
-              <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t(lang, "joinCodePlaceholder")} maxLength={4}
-                className="w-full rounded-lg px-3 py-2 mt-1 mb-2 outline-none font-body text-sm tracking-widest text-center uppercase"
-                style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
-              {errorMsg && <p className="text-xs font-body mb-2" style={{ color: "#b5352f" }}>{errorMsg}</p>}
+          <Card color="#a8ddd0" rotate={1} className="h-full">
+            <div className="text-left h-full flex flex-col">
+              <div className="flex-1">
+                <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "roomCode")}</label>
+                <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t(lang, "joinCodePlaceholder")} maxLength={4}
+                  className="w-full rounded-lg px-3 py-2 mt-1 mb-2 outline-none font-body text-sm tracking-widest text-center uppercase"
+                  style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
+                {errorMsg && <p className="text-xs font-body mb-2" style={{ color: "#b5352f" }}>{errorMsg}</p>}
+              </div>
               <PrimaryButton onClick={joinExistingRoom} disabled={!myName.trim() || joinCode.trim().length < 4} colorKey="green" icon={<Wifi size={18} />}>
                 {t(lang, "joinRoom")}
               </PrimaryButton>
@@ -1191,7 +1183,7 @@ function OnlineGame({ lang, onExit }) {
           !hostSpinning ? (
             <PrimaryButton onClick={() => setHostSpinning(true)} icon={<Play size={20} />}>{t(lang, "spinFirstLetter")}</PrimaryButton>
           ) : (
-            <Card><LetterSpinner usedLetters={room?.used_letters || []} onLanded={hostLaunchRound} lang={lang} /></Card>
+            <div className="max-w-sm mx-auto"><Card><LetterSpinner usedLetters={room?.used_letters || []} onLanded={hostLaunchRound} lang={lang} /></Card></div>
           )
         ) : (
           <Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "waitingHost")}</p></Card>
@@ -1255,7 +1247,7 @@ function OnlineGame({ lang, onExit }) {
             <button onClick={hostEndGame} className="w-full text-center text-sm font-body py-2 mt-1" style={{ color: C.muted }}>{t(lang, "endGame")}</button>
           </>
         ) : (
-          <Card><LetterSpinner usedLetters={room.used_letters || []} onLanded={hostLaunchRound} lang={lang} /></Card>
+          <div className="max-w-sm mx-auto"><Card><LetterSpinner usedLetters={room.used_letters || []} onLanded={hostLaunchRound} lang={lang} /></Card></div>
         )
       ) : (
         <Card><p className="text-sm font-body text-center" style={{ color: C.muted }}>{t(lang, "waitingOthers")}</p></Card>
