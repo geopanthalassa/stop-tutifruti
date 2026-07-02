@@ -403,7 +403,7 @@ export default function StopGameApp() {
     <ThemeContext.Provider value={{ colors, theme, toggle }}>
       <div className="font-body min-h-screen w-full py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
         <style>{FONT_STYLE}</style>
-        <div className="w-[95%] max-w-6xl mx-auto shadow-2xl relative" style={{
+        <div className="w-full sm:w-[95%] sm:max-w-6xl mx-auto shadow-2xl relative" style={{
           clipPath: tornEdgePath(),
           backgroundColor: colors.bg,
           backgroundImage: `radial-gradient(circle, transparent 6px, ${colors.ring} 6px, ${colors.ring} 9px, transparent 9px), repeating-linear-gradient(to bottom, transparent 0px, transparent 29px, ${colors.rule} 30px)`,
@@ -606,9 +606,15 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
     <>
       {/* mobile: stacked, scrollable */}
       <div className="sm:hidden space-y-3">
+        {letter && (
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "letter")}</span>
+            <span className="font-display rounded-lg px-3 py-1 text-2xl" style={{ background: C.red, color: "#2f2a22" }}>{letter}</span>
+          </div>
+        )}
         {categories.map((cat, i) => (
           <div key={cat}>
-            <div className="text-center"><CategoryChip i={i} cat={cat} lang={lang} tag="div" /></div>
+            <div className="text-center"><span className="inline-block text-xs font-body px-2.5 py-1" style={chipStyle(i)}>{cat}</span></div>
             <input
               ref={(el) => (inputRefs.current[i] = el)}
               value={answers[cat] || ""}
@@ -633,7 +639,7 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
               )}
               {categories.map((cat, i) => (
                 <th key={cat} className="p-0 pb-2 text-center" style={{ minWidth: 130 }}>
-                  <CategoryChip i={i} cat={cat} lang={lang} />
+                  <span className="inline-block text-xs font-body px-2.5 py-1" style={chipStyle(i)}>{cat}</span>
                 </th>
               ))}
             </tr>
@@ -670,16 +676,20 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
 // small and unobtrusive, especially in the mobile bar
 // STOP as a big, clearly visible rectangle with a hand-drawn marker border —
 // no more tiny circle that's easy to miss, especially on mobile
-function StopRectButton({ onClick, disabled, height = 56, fontSize = 24 }) {
+// bigger circular STOP, hand-drawn open-circle marker stroke — inline, not full width
+function StopCircleButton({ onClick, disabled, size = 76 }) {
   const C = useColors();
+  const r = size / 2 - size * 0.08;
+  const cx = size / 2, cy = size / 2;
   return (
     <button onClick={onClick} disabled={disabled}
-      className="paper-lift w-full flex items-center justify-center disabled:opacity-30"
-      style={{
-        height, background: C.red, border: "3px solid #2f2a22",
-        borderRadius: "10px 6px 9px 5px", boxShadow: "0 3px 0 rgba(0,0,0,0.2)",
-      }}>
-      <span className="font-title" style={{ fontSize, lineHeight: 1 }}>STOP</span>
+      className="paper-lift relative flex-shrink-0 flex items-center justify-center disabled:opacity-30"
+      style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", top: 0, left: 0 }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.red} strokeWidth={size * 0.1} strokeLinecap="round"
+          pathLength={100} strokeDasharray="82 18" strokeDashoffset="-6" transform={`rotate(-95 ${cx} ${cy})`} />
+      </svg>
+      <span className="font-title relative" style={{ fontSize: size * 0.22, lineHeight: 1 }}>STOP</span>
     </button>
   );
 }
@@ -690,25 +700,24 @@ function StopBar({ lang, elapsedSecs, canStop, onStop, hintKey }) {
   const C = useColors();
   return (
     <>
-      <div className="hidden sm:block mb-3">
-        <div className="flex items-center gap-1 text-sm font-body mb-2" style={{ color: C.muted }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1 text-sm font-body" style={{ color: C.muted }}>
           <Clock size={14} /> {elapsedSecs}s
         </div>
-        <StopRectButton onClick={onStop} disabled={!canStop} height={60} fontSize={26} />
-        {!canStop && <p className="text-xs font-body mt-2" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
+        <StopCircleButton onClick={onStop} disabled={!canStop} size={76} />
       </div>
-      {!canStop && <p className="sm:hidden text-xs font-body mb-2" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
+      {!canStop && <p className="text-xs font-body mb-3" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
 
-      {/* mobile: fixed bottom bar — big rectangular STOP, occupies the width, always one thumb-tap away */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 p-3"
+      {/* mobile: fixed bottom bar — same circular STOP, always one thumb-tap away */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-2 flex items-center justify-between"
         style={{ background: C.card, borderTop: `2px solid ${C.rule}`, boxShadow: "0 -4px 14px rgba(0,0,0,0.15)" }}>
-        <div className="flex items-center justify-center gap-1 text-xs font-body mb-2" style={{ color: C.muted }}>
+        <div className="flex items-center gap-1 text-xs font-body" style={{ color: C.muted }}>
           <Clock size={12} /> {elapsedSecs}s
         </div>
-        <StopRectButton onClick={onStop} disabled={!canStop} height={56} fontSize={24} />
+        <StopCircleButton onClick={onStop} disabled={!canStop} size={72} />
       </div>
       {/* spacer so the fixed bar never covers the last row of inputs on mobile */}
-      <div className="sm:hidden" style={{ height: 108 }} />
+      <div className="sm:hidden" style={{ height: 84 }} />
     </>
   );
 }
@@ -723,7 +732,7 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
       <div className="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6">
         {categories.map((cat, i) => (
           <div key={cat} className="mb-4">
-            <div className="text-center"><CategoryChip i={i} cat={cat} lang={lang} tag="div" /></div>
+            <div className="text-center"><span className="inline-block text-sm font-body px-2.5 py-1" style={chipStyle(i)}>{cat}</span></div>
             <div className="max-h-56 overflow-y-auto pr-1 mt-1">
               {players.map((p) => {
                 const val = getAnswer(p.id, cat);
@@ -1002,7 +1011,7 @@ function RoomChat({ lang, messages, myName, chatText, setChatText, onSend }) {
   return (
     <>
       <button onClick={() => setOpen((o) => !o)}
-        className="paper-lift fixed z-50 flex items-center justify-center rounded-full bottom-24 sm:bottom-6 right-4"
+        className="paper-lift fixed z-50 flex items-center justify-center rounded-full bottom-24 sm:bottom-6 left-4"
         style={{ width: 52, height: 52, background: C.chalk, boxShadow: "2px 4px 10px rgba(0,0,0,0.25)" }}>
         <MessageCircle size={22} color="#2f2a22" />
         {!open && messages.length > 0 && (
@@ -1012,7 +1021,7 @@ function RoomChat({ lang, messages, myName, chatText, setChatText, onSend }) {
       </button>
 
       {open && (
-        <div className="fixed z-50 bottom-24 sm:bottom-24 right-4 left-4 sm:left-auto sm:w-80 flex flex-col"
+        <div className="fixed z-50 bottom-24 sm:bottom-24 left-4 right-4 sm:right-auto sm:w-80 flex flex-col"
           style={{ maxHeight: 380, background: "#fff", borderRadius: 12, border: `1px solid ${C.rule}`, boxShadow: "3px 8px 20px rgba(0,0,0,0.3)" }}>
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.rule}` }}>
             <h4 className="font-display text-lg" style={{ color: "#2f2a22" }}>{t(lang, "chatTitle")}</h4>
