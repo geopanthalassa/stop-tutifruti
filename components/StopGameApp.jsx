@@ -159,7 +159,7 @@ function Card({ children, className = "", color, rotate = 0 }) {
   const bg = color || C.card;
   return (
     <div className={`paper-lift relative mb-4 ${color ? "text-center" : "text-left"} ${className}`} style={{
-      background: bg, ...(color ? {} : ruledBg(C, 24)), padding: "24px 20px 20px",
+      background: bg, ...(color ? {} : ruledBg(C, 30)), padding: "24px 20px 20px",
       transform: rotate ? `rotate(${rotate}deg)` : undefined,
       borderRadius: color ? 2 : 12,
       boxShadow: "3px 6px 14px rgba(0,0,0,0.16)",
@@ -362,14 +362,14 @@ export default function StopGameApp() {
 
   return (
     <ThemeContext.Provider value={{ colors, theme, toggle }}>
-      <div className="font-body min-h-screen w-full flex justify-center py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
+      <div className="font-body min-h-screen w-full py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
         <style>{FONT_STYLE}</style>
-        <div className="flex w-full max-w-6xl shadow-2xl" style={{ clipPath: tornEdgePath(), background: colors.bg }}>
+        <div className="flex max-w-7xl mx-auto shadow-2xl" style={{ clipPath: tornEdgePath(), background: colors.bg }}>
           <SpiralBinding />
-          <div className="flex-1 min-w-0 relative px-5 sm:px-10 pt-6 pb-10" style={ruledBg(colors, 30)}>
+          <div className="flex-1 min-w-0 relative px-5 pl-8 sm:pl-20 sm:pr-10 pt-6 pb-10" style={ruledBg(colors, 30)}>
             {/* red margin rule, like a real notebook page */}
-            <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 56, width: 2, background: colors.margin, opacity: 0.6 }} />
-            <div className="max-w-md sm:max-w-2xl lg:max-w-5xl mx-auto">
+            <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 48, width: 2, background: colors.margin, opacity: 0.6 }} />
+            <div className="max-w-md sm:max-w-2xl lg:max-w-6xl mx-auto">
               {mode === "menu" && <MenuScreen setMode={setMode} lang={lang} setLang={setLang} />}
               {mode === "online" && <OnlineGame lang={lang} onExit={() => setMode("menu")} />}
               {mode === "practice" && <PracticeGame lang={lang} onExit={() => setMode("menu")} />}
@@ -448,10 +448,6 @@ function ScrollCard({ children, color, className = "" }) {
   );
 }
 
-const CORK_POSITIONS = [
-  { top: "0%", left: "2%", rot: -6 }, { top: "2%", left: "40%", rot: 5 }, { top: "-2%", left: "74%", rot: -4 },
-  { top: "48%", left: "8%", rot: 8 }, { top: "50%", left: "44%", rot: -7 }, { top: "46%", left: "76%", rot: 6 },
-];
 
 function MenuScreen({ setMode, lang, setLang }) {
   const C = useColors();
@@ -462,11 +458,8 @@ function MenuScreen({ setMode, lang, setLang }) {
     <div className="relative">
       <CoverDecorations />
 
-      {/* HERO — title centered, same as every other page; folded corner + aka-names as decoration around it */}
+      {/* HERO — title centered, same as every other page */}
       <div className="relative mb-10 pt-2">
-        <div aria-hidden="true" className="hidden sm:block absolute -top-6 -left-6 w-44 h-44" style={{
-          background: catColor(3), clipPath: "polygon(0 0, 100% 0, 0 100%)", opacity: 0.55, transform: "rotate(-4deg)",
-        }} />
         <div className="relative flex justify-end mb-1">
           <HeaderThemeToggle />
         </div>
@@ -501,31 +494,27 @@ function MenuScreen({ setMode, lang, setLang }) {
         })}
       </div>
 
-      {/* mode cards — two different sizes, overlapping */}
-      <div className="relative mb-20 sm:mb-28" style={{ minHeight: 420 }}>
-        <div className="sm:absolute sm:top-0 sm:left-0 sm:w-3/5 sm:z-10 mb-6 sm:mb-0">
-          <Card color="#ffb3c1" rotate={-3} className="!mb-0 sm:!p-9">
-            <div className="flex flex-col items-center gap-2 mb-2"><Wifi size={22} color="#2f2a22" /><h2 className="font-display text-3xl" style={{ color: "#2f2a22" }}>{t(lang, "menuOnlineTitle")}</h2></div>
-            <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuOnlineDesc")}</p>
-            <button onClick={() => setMode("online")} className="paper-lift w-full flex items-center justify-center gap-2 py-3 pl-5 pr-3 font-display text-lg"
-              style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)", clipPath: "polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%)" }}>
-              <Wifi size={18} /> {t(lang, "menuOnlineBtn")}
-            </button>
-          </Card>
-        </div>
-        <div className="sm:absolute sm:top-40 sm:right-0 sm:w-2/5 sm:z-20">
-          <Card color="#ffe08a" rotate={4} className="!mb-0">
-            <div className="flex flex-col items-center gap-2 mb-2"><Bot size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuPracticeTitle")}</h2></div>
-            <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuPracticeDesc")}</p>
-            <button onClick={() => setMode("practice")} className="paper-lift w-full flex items-center justify-center gap-2 py-3 pl-5 pr-3 font-display text-lg"
-              style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)", clipPath: "polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%)" }}>
-              <Bot size={18} /> {t(lang, "menuPracticeBtn")}
-            </button>
-          </Card>
-        </div>
+      {/* mode cards — side by side, different colors, slight rotation */}
+      <div className="sm:grid sm:grid-cols-2 sm:gap-6 mb-10 max-w-2xl mx-auto">
+        <Card color="#ffb3c1" rotate={-0.8}>
+          <div className="flex flex-col items-center gap-2 mb-2"><Wifi size={22} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuOnlineTitle")}</h2></div>
+          <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuOnlineDesc")}</p>
+          <button onClick={() => setMode("online")} className="paper-lift w-full flex items-center justify-center gap-2 py-3 pl-5 pr-3 font-display text-lg"
+            style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)", clipPath: "polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%)" }}>
+            <Wifi size={18} /> {t(lang, "menuOnlineBtn")}
+          </button>
+        </Card>
+        <Card color="#ffe08a" rotate={0.8}>
+          <div className="flex flex-col items-center gap-2 mb-2"><Bot size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuPracticeTitle")}</h2></div>
+          <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuPracticeDesc")}</p>
+          <button onClick={() => setMode("practice")} className="paper-lift w-full flex items-center justify-center gap-2 py-3 pl-5 pr-3 font-display text-lg"
+            style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)", clipPath: "polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%)" }}>
+            <Bot size={18} /> {t(lang, "menuPracticeBtn")}
+          </button>
+        </Card>
       </div>
 
-      {/* rules scroll + categories corkboard */}
+      {/* rules + categories */}
       <div className="lg:grid lg:grid-cols-5 lg:gap-8 relative max-w-4xl mx-auto">
         <div className="lg:col-span-3">
           <ScrollCard color="#a9cdf2">
@@ -539,15 +528,7 @@ function MenuScreen({ setMode, lang, setLang }) {
         </div>
         <div className="lg:col-span-2 mt-6 lg:mt-0">
           <h3 className="font-display text-2xl mb-3 text-center lg:text-left" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
-          <div className="hidden sm:block relative" style={{ minHeight: 210 }}>
-            {guide.map((g, idx) => (
-              <span key={g.catLabel} className="paper-lift absolute text-xs font-body px-2.5 py-1.5"
-                style={{ ...chipStyle(g.i), ...CORK_POSITIONS[idx % CORK_POSITIONS.length], transform: `rotate(${CORK_POSITIONS[idx % CORK_POSITIONS.length].rot}deg)` }}>
-                {g.letter} · {g.catLabel}: {g.word}
-              </span>
-            ))}
-          </div>
-          <div className="sm:hidden flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-center lg:justify-start gap-2">
             {guide.map((g) => (
               <span key={g.catLabel} className="text-xs font-body px-2.5 py-1.5" style={chipStyle(g.i)}>
                 {g.letter} · {g.catLabel}: {g.word}
@@ -662,39 +643,28 @@ function StopCircleButton({ onClick, disabled, size = 64 }) {
   );
 }
 
-function RoundStatusPanel({ lang, letter, elapsedSecs, canStop, onStop, hintKey }) {
+// timer + STOP only — the letter already lives in the table's own "L" column,
+// so this no longer needs to be a whole separate sidebar card
+function StopBar({ lang, elapsedSecs, canStop, onStop, hintKey }) {
   const C = useColors();
   return (
     <>
-      {/* desktop/tablet: sidebar note */}
-      <div className="hidden sm:block">
-        <Card color="#a9cdf2" rotate={-1} className="lg:sticky lg:top-8">
-          <p className="text-xs font-body mb-1" style={{ color: "#4a4438" }}>{t(lang, "letter")}</p>
-          <div className="font-display flex items-center justify-center rounded-xl mb-3 mx-auto"
-            style={{ width: 84, height: 84, fontSize: 40, background: C.red, color: "#2f2a22" }}>
-            {letter}
-          </div>
-          <div className="flex items-center justify-center gap-1 text-sm font-body mb-3" style={{ color: "#4a4438" }}>
-            <Clock size={14} /> {elapsedSecs}s
-          </div>
-          <div className="flex justify-center">
-            <StopCircleButton onClick={onStop} disabled={!canStop} size={80} />
-          </div>
-          {!canStop && <p className="text-xs font-body mt-3" style={{ color: "#4a4438" }}>{t(lang, hintKey)}</p>}
-        </Card>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1 text-sm font-body" style={{ color: C.muted }}>
+          <Clock size={14} /> {elapsedSecs}s
+        </div>
+        <div className="hidden sm:block">
+          <StopCircleButton onClick={onStop} disabled={!canStop} size={60} />
+        </div>
       </div>
+      {!canStop && <p className="text-xs font-body mb-3" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
 
       {/* mobile: fixed bottom bar — small circular STOP, always one thumb-tap away */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-2 flex items-center gap-3"
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-2 flex items-center justify-between"
         style={{ background: C.card, borderTop: `2px solid ${C.rule}`, boxShadow: "0 -4px 14px rgba(0,0,0,0.15)" }}>
-        <div className="font-display flex items-center justify-center rounded-lg flex-shrink-0"
-          style={{ width: 40, height: 40, fontSize: 18, background: C.red, color: "#2f2a22" }}>
-          {letter}
-        </div>
-        <div className="flex items-center gap-1 text-xs font-body flex-shrink-0" style={{ color: C.muted }}>
+        <div className="flex items-center gap-1 text-xs font-body" style={{ color: C.muted }}>
           <Clock size={12} /> {elapsedSecs}s
         </div>
-        <div className="flex-1" />
         <StopCircleButton onClick={onStop} disabled={!canStop} size={56} />
       </div>
       {/* spacer so the fixed bar never covers the last row of inputs on mobile */}
@@ -754,7 +724,7 @@ function RoundPointsCard({ lang, players, roundScores }) {
 function GameOverBlock({ lang, sortedTotals, totals, onReset }) {
   return (
     <div>
-      <Card color="#ffe08a" rotate={-1.5}>
+      <Card color="#ffe08a" rotate={-0.8}>
         <div className="flex flex-col items-center py-2">
           <Trophy size={40} color="#b8860b" />
           <h2 className="font-title text-4xl mt-2">{t(lang, "gameOverTitle")}</h2>
@@ -882,14 +852,14 @@ function PracticeGame({ lang, onExit }) {
       {phase === "setup" && (
         <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
           <div>
-            <Card color="#a9cdf2" rotate={-1.5}>
+            <Card color="#a9cdf2" rotate={-0.8}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="font-display text-xl" style={{ color: "#2f2a22" }}>{t(lang, "numberOfBots")}</h2>
                 <span className="font-display text-xl" style={{ color: "#2f2a22" }}>{numBots}</span>
               </div>
               <input type="range" min="1" max="3" step="1" value={numBots} onChange={(e) => setNumBots(Number(e.target.value))} className="w-full" />
             </Card>
-            <Card color="#c8f0e7" rotate={1.5}>
+            <Card color="#c8f0e7" rotate={0.8}>
               <h2 className="font-display text-xl mb-2" style={{ color: "#2f2a22" }}>{t(lang, "difficulty")}</h2>
               <div className="flex gap-2">
                 {["easy", "medium", "hard"].map((d) => (
@@ -937,17 +907,11 @@ function PracticeGame({ lang, onExit }) {
       )}
 
       {phase === "playerTurn" && started && (
-        <div className="lg:flex lg:gap-5 lg:items-start">
-          <div className="lg:w-64 lg:flex-shrink-0">
-            <RoundStatusPanel lang={lang} letter={currentLetter} elapsedSecs={elapsed}
-              canStop={canCallStop(humanAnswers, categories)} onStop={finishRound} hintKey="stopHint" />
-          </div>
-          <div className="lg:flex-1">
-            <Card>
-              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} lang={lang} letter={currentLetter} />
-            </Card>
-          </div>
-        </div>
+        <Card>
+          <StopBar lang={lang} elapsedSecs={elapsed}
+            canStop={canCallStop(humanAnswers, categories)} onStop={finishRound} hintKey="stopHint" />
+          <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} lang={lang} letter={currentLetter} />
+        </Card>
       )}
 
       {phase === "reveal" && currentLetter && (
@@ -1241,7 +1205,7 @@ function OnlineGame({ lang, onExit }) {
     return (
       <div>
         <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
-        <Card color="#ffe08a" rotate={-1.5}>
+        <Card color="#ffe08a" rotate={-0.8}>
           <div className="flex flex-col items-center py-2"><Trophy size={40} color="#b8860b" /><h2 className="font-title text-4xl mt-2">{t(lang, "gameOverTitle")}</h2></div>
           {sortedTotals.map((p, i) => (
             <div key={p.id} className="flex justify-between items-center rounded-lg px-3 py-2 mb-1 font-body text-sm" style={{ background: i === 0 ? "rgba(255,255,255,0.6)" : "transparent" }}>
@@ -1264,17 +1228,11 @@ function OnlineGame({ lang, onExit }) {
     return (
       <div>
         <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
-        <div className="lg:flex lg:gap-5 lg:items-start">
-          <div className="lg:w-64 lg:flex-shrink-0">
-            <RoundStatusPanel lang={lang} letter={room.letter} elapsedSecs={elapsedSecs}
-              canStop={canCallStop(myAnswers, room.categories)} onStop={callStop} hintKey="stopHintAll" />
-          </div>
-          <div className="lg:flex-1">
-            <Card>
-              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} lang={lang} letter={room.letter} />
-            </Card>
-          </div>
-        </div>
+        <Card>
+          <StopBar lang={lang} elapsedSecs={elapsedSecs}
+            canStop={canCallStop(myAnswers, room.categories)} onStop={callStop} hintKey="stopHintAll" />
+          <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} lang={lang} letter={room.letter} />
+        </Card>
         <RoomChat lang={lang} messages={room?.chat || []} myName={myName} chatText={chatText} setChatText={setChatText} onSend={sendChatMsg} />
       </div>
     );
