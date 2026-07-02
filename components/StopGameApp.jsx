@@ -142,15 +142,12 @@ function Header({ subtitle }) {
   const { theme, toggle } = useContext(ThemeContext);
   const C = useColors();
   return (
-    <div className="flex items-start justify-between mb-6">
-      <div style={{ width: 32 }} />
-      <div className="flex flex-col items-center flex-1">
-        <h1 className="font-display text-5xl" style={{ color: C.red, transform: "rotate(-1deg)" }}>¡STOP!</h1>
-        {subtitle && <p className="text-xs font-body mt-1" style={{ color: C.muted }}>{subtitle}</p>}
-      </div>
-      <button onClick={toggle} className="p-2 rounded-full" style={{ color: C.text, border: `1px solid ${C.rule}` }}>
+    <div className="relative flex flex-col items-center mb-6">
+      <button onClick={toggle} className="absolute right-0 top-0 p-2 rounded-full" style={{ color: C.text, border: `1px solid ${C.rule}` }}>
         {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
       </button>
+      <h1 className="font-title text-5xl">¡STOP!</h1>
+      {subtitle && <p className="text-xs font-body mt-1" style={{ color: C.muted }}>{subtitle}</p>}
     </div>
   );
 }
@@ -314,21 +311,31 @@ const EXAMPLE_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "M", "P", "S", "T"];
 function CategoryChip({ i, cat, lang, tag = "span" }) {
   const C = useColors();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
   const catId = catIdForLabel(lang, cat);
   const examples = catId
     ? EXAMPLE_LETTERS.map((l) => ({ l, w: botAnswerFor(lang, catId, l) })).filter((x) => x.w)
     : [];
   const Tag = tag;
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen((o) => !o);
+  };
   return (
     <Tag className="relative inline-block">
-      <button type="button" onClick={() => setOpen((o) => !o)}
+      <button ref={btnRef} type="button" onClick={toggle}
         className="text-xs font-body px-2.5 py-1" style={chipStyle(i)}>
         {cat}
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 left-0 p-2 rounded-lg text-left" style={{
+        <div className="p-2 rounded-lg text-left" style={{
+          position: "fixed", top: pos.top, left: pos.left, zIndex: 9999,
           background: "#fff", border: `1px solid ${C.rule}`, minWidth: 150,
-          boxShadow: "2px 4px 10px rgba(0,0,0,0.2)",
+          boxShadow: "2px 4px 10px rgba(0,0,0,0.25)",
         }}>
           {examples.length > 0 ? examples.map(({ l, w }) => (
             <p key={l} className="text-xs font-body" style={{ color: "#2b2b2b" }}><b>{l}:</b> {w}</p>
@@ -455,7 +462,7 @@ function MenuScreen({ setMode, lang, setLang }) {
     <div className="relative">
       <CoverDecorations />
 
-      {/* HERO — off-center, folded corner behind the title, aka-names as a tilted ribbon */}
+      {/* HERO — title centered, same as every other page; folded corner + aka-names as decoration around it */}
       <div className="relative mb-10 pt-2">
         <div aria-hidden="true" className="hidden sm:block absolute -top-6 -left-6 w-44 h-44" style={{
           background: catColor(3), clipPath: "polygon(0 0, 100% 0, 0 100%)", opacity: 0.55, transform: "rotate(-4deg)",
@@ -463,11 +470,11 @@ function MenuScreen({ setMode, lang, setLang }) {
         <div className="relative flex justify-end mb-1">
           <HeaderThemeToggle />
         </div>
-        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 pt-2">
-          <h1 className="font-title text-6xl sm:text-7xl lg:text-8xl" style={{ transform: "rotate(-3deg)" }}>¡STOP!</h1>
-          <div className="sm:mb-2 sm:text-right" style={{ transform: "rotate(1.5deg)" }}>
+        <div className="relative flex flex-col items-center text-center gap-2 pt-2">
+          <h1 className="font-title text-6xl sm:text-7xl lg:text-8xl">¡STOP!</h1>
+          <div style={{ transform: "rotate(1deg)" }}>
             <p className="font-hand text-xl" style={{ color: C.muted }}>{t(lang, "akaLabel")}</p>
-            <div className="flex flex-wrap gap-2 mt-1 sm:justify-end">
+            <div className="flex flex-wrap justify-center gap-2 mt-1">
               {AKA_NAMES.map((n, i) => (
                 <span key={n} className="text-xs font-body px-2.5 py-1 rounded-full" style={{ background: catColor(i), color: "#2f2a22", fontWeight: 700 }}>{n}</span>
               ))}
@@ -563,7 +570,7 @@ function HeaderThemeToggle() {
   );
 }
 
-function AnswerGrid({ categories, answers, onChange, inputRefs, lang }) {
+function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) {
   const C = useColors();
   const handleKey = (e, i, cat) => {
     const isAdvanceKey = e.key === "Enter" || e.key === " ";
@@ -591,11 +598,16 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang }) {
         ))}
       </div>
 
-      {/* web/tablet: a real table, like a spreadsheet — one column per category */}
+      {/* web/tablet: a real horizontal scoresheet, letter first — like the paper version */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="border-collapse" style={{ minWidth: "100%" }}>
           <thead>
             <tr>
+              {letter && (
+                <th className="p-0 pb-2 text-left" style={{ minWidth: 60 }}>
+                  <span className="inline-block text-xs font-body px-2.5 py-1 font-bold" style={{ background: C.red, color: "#2f2a22", borderRadius: "10px 10px 10px 2px" }}>L</span>
+                </th>
+              )}
               {categories.map((cat, i) => (
                 <th key={cat} className="p-0 pb-2 text-left" style={{ minWidth: 130 }}>
                   <CategoryChip i={i} cat={cat} lang={lang} />
@@ -605,6 +617,11 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang }) {
           </thead>
           <tbody>
             <tr>
+              {letter && (
+                <td className="p-1 text-center" style={{ border: `1px solid ${C.rule}` }}>
+                  <span className="font-display text-xl" style={{ color: C.red }}>{letter}</span>
+                </td>
+              )}
               {categories.map((cat, i) => (
                 <td key={cat} className="p-1" style={{ border: `1px solid ${C.rule}` }}>
                   <input
@@ -787,10 +804,13 @@ function PracticeGame({ lang, onExit }) {
     setTotals(initTotals);
     setPhase("spin");
   };
-  const onLetterLanded = (letter) => { setCurrentLetter(letter); setUsedLetters((u) => [...u, letter]); };
-  const beginRound = () => {
-    if (!currentLetter) return;
-    setHumanAnswers({}); setBotAnswers({}); setElapsed(0); setStarted(false); setPhase("playerTurn");
+  const onLetterLanded = (letter) => {
+    setCurrentLetter(letter);
+    setUsedLetters((u) => [...u, letter]);
+    setHumanAnswers({}); setBotAnswers({}); setElapsed(0);
+    setStarted(true);
+    setPhase("playerTurn");
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
   useEffect(() => {
@@ -898,16 +918,7 @@ function PracticeGame({ lang, onExit }) {
       {phase === "spin" && (
         <div>
           <Card color="#ffd3dc" rotate={-1}>
-            {!currentLetter ? (
-              <LetterSpinner usedLetters={usedLetters} onLanded={onLetterLanded} lang={lang} />
-            ) : (
-              <div className="flex flex-col items-center py-4">
-                <div className="flex items-center justify-center font-display" style={{ width: 120, height: 120, fontSize: 54, borderRadius: 999, border: `3px dashed #2f2a22`, color: "#2f2a22" }}>{currentLetter}</div>
-                <button onClick={beginRound} className="mt-5 flex items-center gap-2 rounded-xl px-6 py-3 font-display text-lg" style={{ background: C.green, color: "#2f2a22" }}>
-                  {t(lang, "beginRound")} <ChevronRight size={18} />
-                </button>
-              </div>
-            )}
+            <LetterSpinner usedLetters={usedLetters} onLanded={onLetterLanded} lang={lang} />
             {usedLetters.length > 0 && <p className="text-center text-xs font-body mt-1" style={{ color: "#4a4438" }}>{t(lang, "usedLetters")} {usedLetters.join(", ")}</p>}
           </Card>
           <Card color="#ffe08a" rotate={1}>
@@ -925,18 +936,6 @@ function PracticeGame({ lang, onExit }) {
         </div>
       )}
 
-      {phase === "playerTurn" && !started && (
-        <Card color="#a9cdf2" rotate={-1}>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <span className="text-sm font-body" style={{ color: "#4a4438" }}>{t(lang, "letter")}</span>
-            <span className="font-display rounded-lg px-3 py-1 text-2xl" style={{ background: C.red, color: "#2f2a22" }}>{currentLetter}</span>
-          </div>
-          <PrimaryButton colorKey="green" icon={<Play size={18} />} onClick={() => { setStarted(true); setTimeout(() => inputRefs.current[0]?.focus(), 50); }}>
-            {t(lang, "ready")}
-          </PrimaryButton>
-        </Card>
-      )}
-
       {phase === "playerTurn" && started && (
         <div className="lg:flex lg:gap-5 lg:items-start">
           <div className="lg:w-64 lg:flex-shrink-0">
@@ -945,7 +944,7 @@ function PracticeGame({ lang, onExit }) {
           </div>
           <div className="lg:flex-1">
             <Card>
-              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} lang={lang} />
+              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} lang={lang} letter={currentLetter} />
             </Card>
           </div>
         </div>
@@ -960,13 +959,17 @@ function PracticeGame({ lang, onExit }) {
               </div>
             </Card>
           )}
-          {lastElapsed !== null && (
-            <p className="text-xs font-body text-center mb-2" style={{ color: C.muted }}>{t(lang, "yourTime")}: {lastElapsed}s</p>
-          )}
           <div className="lg:flex lg:gap-5 lg:items-start">
             <div className="lg:flex-1"><RevealList lang={lang} letter={currentLetter} categories={categories} players={fakePlayers}
               getAnswer={getAnswer} disabledKeys={disabledKeys} toggleInvalid={toggleInvalid} /></div>
-            <div className="lg:w-64 lg:flex-shrink-0"><RoundPointsCard lang={lang} players={fakePlayers} roundScores={roundScores} /></div>
+            <div className="lg:w-64 lg:flex-shrink-0">
+              <RoundPointsCard lang={lang} players={fakePlayers} roundScores={roundScores} />
+              {lastElapsed !== null && (
+                <Card rotate={0.5}>
+                  <p className="text-sm font-body" style={{ color: C.text }}>{t(lang, "yourTime")}: <span className="font-display text-lg" style={{ color: C.red }}>{lastElapsed}s</span></p>
+                </Card>
+              )}
+            </div>
           </div>
           <PrimaryButton onClick={confirmRoundScores} icon={<ChevronRight size={18} />}>{t(lang, "confirmAndContinue")}</PrimaryButton>
         </>
@@ -1088,7 +1091,7 @@ function OnlineGame({ lang, onExit }) {
     try {
       const data = await createRoom(code, { hostId: myId, hostName: myName.trim(), categories: newRoomCategories });
       setRoom(data); setRoomCode(code); setIsHost(true); setInRoom(true);
-    } catch (e) { setErrorMsg("No se pudo crear la sala. Revisá tu conexión a Supabase."); }
+    } catch (e) { setErrorMsg("No se pudo crear la sala. Revisa tu conexión a Supabase."); }
   };
 
   const joinExistingRoom = async () => {
@@ -1166,23 +1169,27 @@ function OnlineGame({ lang, onExit }) {
         <BackBar onBack={onExit} label={t(lang, "mainMenu")} />
         <Header subtitle={t(lang, "menuOnlineTitle")} />
         <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
-          <Card>
-            <label className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "yourName")}</label>
-            <input value={myName} onChange={(e) => setMyName(e.target.value)} placeholder={t(lang, "namePlaceholder")}
-              className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
-            <h3 className="font-display text-lg mb-2" style={{ color: C.ink }}>{t(lang, "categories")}</h3>
-            <div className="mb-4"><CategoryEditor lang={lang} categories={newRoomCategories} setCategories={setNewRoomCategories} /></div>
-            <PrimaryButton onClick={createNewRoom} disabled={!myName.trim() || newRoomCategories.length < 1} icon={<Plus size={18} />}>{t(lang, "createRoom")}</PrimaryButton>
+          <Card color="#ffd3dc" rotate={-1}>
+            <div className="text-left">
+              <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "yourName")}</label>
+              <input value={myName} onChange={(e) => setMyName(e.target.value)} placeholder={t(lang, "namePlaceholder")}
+                className="w-full rounded-lg px-3 py-2 mt-1 mb-4 outline-none font-body text-sm" style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
+              <h3 className="font-display text-lg mb-2" style={{ color: "#2f2a22" }}>{t(lang, "categories")}</h3>
+              <div className="mb-4"><CategoryEditor lang={lang} categories={newRoomCategories} setCategories={setNewRoomCategories} /></div>
+              <PrimaryButton onClick={createNewRoom} disabled={!myName.trim() || newRoomCategories.length < 1} icon={<Plus size={18} />}>{t(lang, "createRoom")}</PrimaryButton>
+            </div>
           </Card>
-          <Card>
-            <label className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "roomCode")}</label>
-            <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t(lang, "joinCodePlaceholder")} maxLength={4}
-              className="w-full rounded-lg px-3 py-2 mt-1 mb-2 outline-none font-body text-sm tracking-widest text-center uppercase"
-              style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
-            {errorMsg && <p className="text-xs font-body mb-2" style={{ color: C.red }}>{errorMsg}</p>}
-            <PrimaryButton onClick={joinExistingRoom} disabled={!myName.trim() || joinCode.trim().length < 4} colorKey="green" icon={<Wifi size={18} />}>
-              {t(lang, "joinRoom")}
-            </PrimaryButton>
+          <Card color="#a8ddd0" rotate={1}>
+            <div className="text-left">
+              <label className="text-xs font-body" style={{ color: "#4a4438" }}>{t(lang, "roomCode")}</label>
+              <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t(lang, "joinCodePlaceholder")} maxLength={4}
+                className="w-full rounded-lg px-3 py-2 mt-1 mb-2 outline-none font-body text-sm tracking-widest text-center uppercase"
+                style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.1)", color: "#2f2a22" }} />
+              {errorMsg && <p className="text-xs font-body mb-2" style={{ color: "#b5352f" }}>{errorMsg}</p>}
+              <PrimaryButton onClick={joinExistingRoom} disabled={!myName.trim() || joinCode.trim().length < 4} colorKey="green" icon={<Wifi size={18} />}>
+                {t(lang, "joinRoom")}
+              </PrimaryButton>
+            </div>
           </Card>
         </div>
       </div>
@@ -1264,7 +1271,7 @@ function OnlineGame({ lang, onExit }) {
           </div>
           <div className="lg:flex-1">
             <Card>
-              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} lang={lang} />
+              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} lang={lang} letter={room.letter} />
             </Card>
           </div>
         </div>
