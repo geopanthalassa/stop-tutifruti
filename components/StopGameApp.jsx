@@ -197,8 +197,12 @@ function LetterSpinner({ usedLetters, onLanded, lang }) {
     const step = () => {
       ticks++;
       setDisplay(ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)]);
-      if (ticks >= totalTicks) { setDisplay(target); setLanded(target); setSpinning(false); }
-      else setTimeout(step, 70 + ticks * 4);
+      if (ticks >= totalTicks) {
+        setDisplay(target); setLanded(target); setSpinning(false);
+        // no confirmation step — the round starts for everyone the instant it lands,
+        // so whoever spins doesn't get extra time to think before everyone else
+        setTimeout(() => onLanded(target), 500);
+      } else setTimeout(step, 70 + ticks * 4);
     };
     step();
   };
@@ -208,17 +212,12 @@ function LetterSpinner({ usedLetters, onLanded, lang }) {
         style={{ width: 120, height: 120, fontSize: 54, borderRadius: 999, border: `3px dashed ${C.ink}`, color: landed ? C.red : C.ink }}>
         {landed || display}
       </div>
-      {!landed ? (
+      {!landed && (
         <button onClick={spin} disabled={spinning}
           className="mt-5 flex items-center gap-2 rounded-xl px-6 py-3 font-display text-lg disabled:opacity-50"
           style={{ background: C.chalk, color: "#2f2a22" }}>
           <RotateCcw size={18} className={spinning ? "animate-spin" : ""} />
           {spinning ? t(lang, "spinning") : t(lang, "spinLetter")}
-        </button>
-      ) : (
-        <button onClick={() => onLanded(landed)} className="mt-5 flex items-center gap-2 rounded-xl px-6 py-3 font-display text-lg"
-          style={{ background: C.green, color: "#2f2a22" }}>
-          {t(lang, "confirm")} <ChevronRight size={18} />
         </button>
       )}
     </div>
@@ -473,22 +472,64 @@ function HeaderThemeToggle() {
 
 function AnswerGrid({ categories, answers, onChange, inputRefs }) {
   const C = useColors();
+  const handleKey = (e, i, cat) => {
+    const isAdvanceKey = e.key === "Enter" || e.key === " ";
+    if (!isAdvanceKey) return;
+    // don't hijack a leading space — only jump once something's actually typed
+    if (e.key === " " && !(answers[cat] || "").trim()) return;
+    e.preventDefault();
+    focusNext(inputRefs, i);
+  };
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {categories.map((cat, i) => (
-        <div key={cat}>
-          <span className="inline-block text-xs font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
-          <input
-            ref={(el) => (inputRefs.current[i] = el)}
-            value={answers[cat] || ""}
-            onChange={(e) => onChange(cat, e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); focusNext(inputRefs, i); } }}
-            className="w-full rounded-lg px-3 py-2 outline-none font-body text-sm"
-            style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }}
-          />
-        </div>
-      ))}
-    </div>
+    <>
+      {/* mobile: stacked, scrollable */}
+      <div className="sm:hidden space-y-3">
+        {categories.map((cat, i) => (
+          <div key={cat}>
+            <span className="inline-block text-xs font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
+            <input
+              ref={(el) => (inputRefs.current[i] = el)}
+              value={answers[cat] || ""}
+              onChange={(e) => onChange(cat, e.target.value)}
+              onKeyDown={(e) => handleKey(e, i, cat)}
+              className="w-full rounded-lg px-3 py-2 outline-none font-body text-sm"
+              style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* web/tablet: a real table, like a spreadsheet — one column per category */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="border-collapse" style={{ minWidth: "100%" }}>
+          <thead>
+            <tr>
+              {categories.map((cat, i) => (
+                <th key={cat} className="p-0 pb-2 text-left" style={{ minWidth: 130 }}>
+                  <span className="inline-block text-xs font-body px-2.5 py-1" style={chipStyle(i)}>{cat}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {categories.map((cat, i) => (
+                <td key={cat} className="p-1" style={{ border: `1px solid ${C.rule}` }}>
+                  <input
+                    ref={(el) => (inputRefs.current[i] = el)}
+                    value={answers[cat] || ""}
+                    onChange={(e) => onChange(cat, e.target.value)}
+                    onKeyDown={(e) => handleKey(e, i, cat)}
+                    className="w-full px-2 py-2 outline-none font-body text-sm"
+                    style={{ background: C.inputBg, color: C.text, minWidth: 120 }}
+                  />
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -838,7 +879,12 @@ function OnlineGame({ lang, onExit }) {
   useEffect(() => {
     if (!roomCode) return;
     unsubRef.current = subscribeRoom(roomCode, (row) => setRoom(row));
-    return () => unsubRef.current && unsubRef.current();
+    // Realtime should be instant, but as a safety net in case a push ever gets
+    // dropped, also poll every few seconds so no one stays stuck on a stale screen
+    const pollTimer = setInterval(() => {
+      fetchRoom(roomCode).then((row) => { if (row) setRoom(row); }).catch(() => {});
+    }, 3000);
+    return () => { unsubRef.current && unsubRef.current(); clearInterval(pollTimer); };
   }, [roomCode]);
 
   useEffect(() => {
