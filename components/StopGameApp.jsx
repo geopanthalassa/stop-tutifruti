@@ -47,9 +47,10 @@ const ThemeContext = createContext({ colors: LIGHT, theme: "light", toggle: () =
 function useColors() { return useContext(ThemeContext).colors; }
 
 const FONT_STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Baloo+2:wght@500;600;700;800&family=Caveat:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap');
 .font-display { font-family: 'Baloo 2', cursive; font-weight: 700; }
-.font-body { font-family: 'Inter', sans-serif; }
+.font-body { font-family: 'Nunito', sans-serif; }
+.font-hand { font-family: 'Caveat', cursive; font-weight: 700; }
 .font-title {
   font-family: 'Permanent Marker', cursive;
   color: #1c1a16;
@@ -57,6 +58,8 @@ const FONT_STYLE = `
     -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff,
     0 -3px 0 #fff, 0 3px 0 #fff, -3px 0 0 #fff, 3px 0 0 #fff;
 }
+.paper-lift { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.paper-lift:hover { transform: translateY(-3px) rotate(0deg) !important; box-shadow: 4px 10px 18px rgba(0,0,0,0.28) !important; }
 `;
 
 function normalize(s) {
@@ -151,14 +154,30 @@ function Header({ subtitle }) {
     </div>
   );
 }
-function Card({ children, className = "" }) {
+// every card in the app is the same object: a note with tape, a folded corner,
+// and a lift-on-hover feel. Gameplay screens use it plain (white, straight, ruled)
+// for legibility; the cover uses it with color + rotation for personality.
+function Card({ children, className = "", color, rotate = 0 }) {
   const C = useColors();
+  const bg = color || C.card;
   return (
-    <div className={`mb-4 ${className}`} style={{
-      ...ruledBg(C, 24), borderRadius: 12, padding: "20px",
-      boxShadow: "0 1px 0 rgba(0,0,0,0.05), 0 6px 18px rgba(0,0,0,0.12)",
-      border: `1px solid ${C.rule}`,
+    <div className={`paper-lift relative mb-4 ${color ? "text-center" : "text-left"} ${className}`} style={{
+      background: bg, ...(color ? {} : ruledBg(C, 24)), padding: "24px 20px 20px",
+      transform: rotate ? `rotate(${rotate}deg)` : undefined,
+      borderRadius: color ? 2 : 12,
+      boxShadow: "3px 6px 14px rgba(0,0,0,0.16)",
+      border: color ? "none" : `1px solid ${C.rule}`,
     }}>
+      <div style={{
+        position: "absolute", top: -10, left: "50%", width: 64, height: 20,
+        background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.7)",
+        transform: "translateX(-50%) rotate(-2deg)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+      }} />
+      <div style={{
+        position: "absolute", top: 0, right: 0, width: 0, height: 0,
+        borderStyle: "solid", borderWidth: "0 18px 18px 0",
+        borderColor: "transparent rgba(0,0,0,0.14) transparent transparent",
+      }} />
       {children}
     </div>
   );
@@ -175,7 +194,7 @@ function PrimaryButton({ children, onClick, disabled, colorKey = "red", icon }) 
   const C = useColors();
   return (
     <button onClick={onClick} disabled={disabled}
-      className="w-full flex items-center justify-center gap-2 rounded-xl py-3 font-display text-xl disabled:opacity-40"
+      className="paper-lift w-full flex items-center justify-center gap-2 rounded-full py-3 font-display text-xl disabled:opacity-40"
       style={{ background: C[colorKey], color: "#2f2a22", boxShadow: "0 3px 0 rgba(0,0,0,0.18)" }}>
       {icon} {children}
     </button>
@@ -283,6 +302,41 @@ function focusNext(inputRefs, i) {
   const next = inputRefs.current[i + 1];
   if (next) next.focus();
 }
+function catIdForLabel(lang, label) {
+  const idx = LOCALIZED_CATEGORIES[lang]?.indexOf(label);
+  return idx >= 0 ? CATEGORY_IDS[idx] : null;
+}
+const EXAMPLE_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "M", "P", "S", "T"];
+
+function CategoryChip({ i, cat, lang, tag = "span" }) {
+  const C = useColors();
+  const [open, setOpen] = useState(false);
+  const catId = catIdForLabel(lang, cat);
+  const examples = catId
+    ? EXAMPLE_LETTERS.map((l) => ({ l, w: botAnswerFor(lang, catId, l) })).filter((x) => x.w)
+    : [];
+  const Tag = tag;
+  return (
+    <Tag className="relative inline-block">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="text-xs font-body px-2.5 py-1" style={chipStyle(i)}>
+        {cat}
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 left-0 p-2 rounded-lg text-left" style={{
+          background: "#fff", border: `1px solid ${C.rule}`, minWidth: 150,
+          boxShadow: "2px 4px 10px rgba(0,0,0,0.2)",
+        }}>
+          {examples.length > 0 ? examples.map(({ l, w }) => (
+            <p key={l} className="text-xs font-body" style={{ color: "#2b2b2b" }}><b>{l}:</b> {w}</p>
+          )) : (
+            <p className="text-xs font-body" style={{ color: C.muted }}>Sin ejemplos para esta categoría</p>
+          )}
+        </div>
+      )}
+    </Tag>
+  );
+}
 
 // ============================================================
 // APP ROOT — the whole app sits on an open notebook: grid-ruled page(s)
@@ -317,23 +371,6 @@ export default function StopGameApp() {
   );
 }
 
-// a real sticky note: folded corner, drop shadow, slight rotation, centered content
-function PostItCard({ children, color, rotate = -1.5, className = "" }) {
-  const bg = color || "#fff6c9";
-  return (
-    <div className={`relative text-center ${className}`} style={{
-      background: bg, padding: "24px 20px", transform: `rotate(${rotate}deg)`,
-      boxShadow: "3px 6px 14px rgba(0,0,0,0.25)", borderRadius: "2px",
-    }}>
-      <div style={{
-        position: "absolute", top: 0, right: 0, width: 0, height: 0,
-        borderStyle: "solid", borderWidth: "0 20px 20px 0",
-        borderColor: `transparent rgba(0,0,0,0.16) transparent transparent`,
-      }} />
-      {children}
-    </div>
-  );
-}
 
 const AKA_NAMES = ["Tutti Frutti", "Basta", "Bachillerato", "Alto el Lápiz", "Stadt, Land, Fluss", "Párame la Mano"];
 
@@ -347,6 +384,8 @@ const DECORATIONS = [
   { kind: "note", top: "78%", left: "93%", color: "#ffe08a", rot: 12 },
   { kind: "emoji", e: "⭐", top: "12%", left: "48%", size: 26, rot: 0 },
   { kind: "emoji", e: "🦒", top: "90%", left: "6%", size: 38, rot: -10 },
+  { kind: "emoji", e: "📎", top: "30%", left: "50%", size: 30, rot: -20 },
+  { kind: "emoji", e: "📌", top: "84%", left: "50%", size: 28, rot: 14 },
 ];
 
 function CoverDecorations() {
@@ -396,8 +435,8 @@ function MenuScreen({ setMode, lang, setLang }) {
         <h1 className="font-title text-6xl sm:text-7xl lg:text-8xl inline-block" style={{ transform: "rotate(-2deg)" }}>
           ¡STOP!
         </h1>
-        <p className="font-display text-xl mt-1" style={{ color: C.ink }}>{t(lang, "appSubtitle")}</p>
-        <p className="text-xs font-body mt-3" style={{ color: C.muted }}>{t(lang, "akaLabel")}</p>
+        <p className="font-hand text-2xl mt-1" style={{ color: C.ink }}>{t(lang, "appSubtitle")}</p>
+        <p className="font-hand text-lg mt-3" style={{ color: C.muted }}>{t(lang, "akaLabel")}</p>
         <div className="flex flex-wrap justify-center gap-2 mt-2">
           {AKA_NAMES.map((n, i) => (
             <span key={n} className="text-xs font-body px-2.5 py-1 rounded-full" style={{ background: catColor(i), color: "#2f2a22", fontWeight: 600 }}>{n}</span>
@@ -416,35 +455,35 @@ function MenuScreen({ setMode, lang, setLang }) {
       </div>
 
       <div className="sm:grid sm:grid-cols-2 sm:gap-8 relative mb-10 max-w-2xl mx-auto">
-        <PostItCard color="#ffb3c1" rotate={-2}>
+        <Card color="#ffb3c1" rotate={-2}>
           <div className="flex flex-col items-center gap-2 mb-2"><Wifi size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuOnlineTitle")}</h2></div>
           <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuOnlineDesc")}</p>
-          <button onClick={() => setMode("online")} className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+          <button onClick={() => setMode("online")} className="paper-lift w-full flex items-center justify-center gap-2 rounded-full py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
             <Wifi size={18} /> {t(lang, "menuOnlineBtn")}
           </button>
-        </PostItCard>
-        <PostItCard color="#ffe08a" rotate={2}>
+        </Card>
+        <Card color="#ffe08a" rotate={2}>
           <div className="flex flex-col items-center gap-2 mb-2"><Bot size={20} color="#2f2a22" /><h2 className="font-display text-2xl" style={{ color: "#2f2a22" }}>{t(lang, "menuPracticeTitle")}</h2></div>
           <p className="text-sm font-body mb-4" style={{ color: "#4a4438" }}>{t(lang, "menuPracticeDesc")}</p>
-          <button onClick={() => setMode("practice")} className="w-full flex items-center justify-center gap-2 rounded-lg py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
+          <button onClick={() => setMode("practice")} className="paper-lift w-full flex items-center justify-center gap-2 rounded-full py-3 font-display text-lg" style={{ background: "#fff", color: "#2f2a22", boxShadow: "0 2px 0 rgba(0,0,0,0.15)" }}>
             <Bot size={18} /> {t(lang, "menuPracticeBtn")}
           </button>
-        </PostItCard>
+        </Card>
       </div>
 
       <div className="lg:grid lg:grid-cols-5 lg:gap-8 relative max-w-4xl mx-auto">
         <div className="lg:col-span-3">
-          <PostItCard color="#a9cdf2" rotate={-1}>
+          <Card color="#a9cdf2" rotate={-1}>
             <h3 className="font-display text-2xl mb-3" style={{ color: "#2f2a22" }}>{t(lang, "howToPlayTitle")}</h3>
             <div className="space-y-2 text-left max-w-md mx-auto">
               {rules.map((line, i) => (
                 <p key={i} className="text-sm font-body leading-relaxed" style={{ color: "#2f2a22" }}>{line}</p>
               ))}
             </div>
-          </PostItCard>
+          </Card>
         </div>
         <div className="lg:col-span-2">
-          <PostItCard color="#a8ddd0" rotate={1.5}>
+          <Card color="#a8ddd0" rotate={1.5}>
             <h3 className="font-display text-2xl mb-3" style={{ color: "#2f2a22" }}>{t(lang, "categories")}</h3>
             <div className="flex flex-wrap justify-center gap-2">
               {guide.map((g) => (
@@ -453,7 +492,7 @@ function MenuScreen({ setMode, lang, setLang }) {
                 </span>
               ))}
             </div>
-          </PostItCard>
+          </Card>
         </div>
       </div>
     </div>
@@ -470,12 +509,11 @@ function HeaderThemeToggle() {
   );
 }
 
-function AnswerGrid({ categories, answers, onChange, inputRefs }) {
+function AnswerGrid({ categories, answers, onChange, inputRefs, lang }) {
   const C = useColors();
   const handleKey = (e, i, cat) => {
     const isAdvanceKey = e.key === "Enter" || e.key === " ";
     if (!isAdvanceKey) return;
-    // don't hijack a leading space — only jump once something's actually typed
     if (e.key === " " && !(answers[cat] || "").trim()) return;
     e.preventDefault();
     focusNext(inputRefs, i);
@@ -486,13 +524,13 @@ function AnswerGrid({ categories, answers, onChange, inputRefs }) {
       <div className="sm:hidden space-y-3">
         {categories.map((cat, i) => (
           <div key={cat}>
-            <span className="inline-block text-xs font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
+            <CategoryChip i={i} cat={cat} lang={lang} tag="div" />
             <input
               ref={(el) => (inputRefs.current[i] = el)}
               value={answers[cat] || ""}
               onChange={(e) => onChange(cat, e.target.value)}
               onKeyDown={(e) => handleKey(e, i, cat)}
-              className="w-full rounded-lg px-3 py-2 outline-none font-body text-sm"
+              className="w-full rounded-lg px-3 py-2 mt-1 outline-none font-body text-sm"
               style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }}
             />
           </div>
@@ -506,7 +544,7 @@ function AnswerGrid({ categories, answers, onChange, inputRefs }) {
             <tr>
               {categories.map((cat, i) => (
                 <th key={cat} className="p-0 pb-2 text-left" style={{ minWidth: 130 }}>
-                  <span className="inline-block text-xs font-body px-2.5 py-1" style={chipStyle(i)}>{cat}</span>
+                  <CategoryChip i={i} cat={cat} lang={lang} />
                 </th>
               ))}
             </tr>
@@ -566,8 +604,8 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
       <div className="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6">
         {categories.map((cat, i) => (
           <div key={cat} className="mb-4">
-            <span className="inline-block text-sm font-body px-2.5 py-1 mb-1" style={chipStyle(i)}>{cat}</span>
-            <div className="max-h-56 overflow-y-auto pr-1">
+            <CategoryChip i={i} cat={cat} lang={lang} tag="div" />
+            <div className="max-h-56 overflow-y-auto pr-1 mt-1">
               {players.map((p) => {
                 const val = getAnswer(p.id, cat);
                 const norm = normalize(val);
@@ -816,7 +854,7 @@ function PracticeGame({ lang, onExit }) {
           </div>
           <div className="lg:flex-1">
             <Card>
-              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} />
+              <AnswerGrid categories={categories} answers={humanAnswers} onChange={handleAnswerChange} inputRefs={inputRefs} lang={lang} />
             </Card>
           </div>
         </div>
@@ -1071,7 +1109,7 @@ function OnlineGame({ lang, onExit }) {
           </div>
           <div className="lg:flex-1">
             <Card>
-              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} />
+              <AnswerGrid categories={room.categories} answers={myAnswers} onChange={(cat, val) => setMyAnswers((a) => ({ ...a, [cat]: val }))} inputRefs={inputRefs} lang={lang} />
             </Card>
           </div>
         </div>
