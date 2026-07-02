@@ -227,10 +227,23 @@ function LetterSpinner({ usedLetters, onLanded, lang }) {
     </div>
   );
 }
+const SAVED_GRIDS_KEY = "stop_saved_category_grids";
+function loadSavedGrids() {
+  try { return JSON.parse(localStorage.getItem(SAVED_GRIDS_KEY) || "[]"); } catch { return []; }
+}
+function persistSavedGrids(grids) {
+  try { localStorage.setItem(SAVED_GRIDS_KEY, JSON.stringify(grids)); } catch {}
+}
+
 function CategoryEditor({ lang, categories, setCategories }) {
   const C = useColors();
   const [newCat, setNewCat] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [savedGrids, setSavedGrids] = useState([]);
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  useEffect(() => { setSavedGrids(loadSavedGrids()); }, []);
+
   const add = (value) => {
     const c = (value ?? newCat).trim();
     if (c && categories.length < MAX_CATEGORIES && !categories.includes(c)) {
@@ -240,6 +253,18 @@ function CategoryEditor({ lang, categories, setCategories }) {
   };
   const remove = (c) => setCategories(categories.filter((x) => x !== c));
   const suggestions = (SUGGESTED_CATEGORIES[lang] || SUGGESTED_CATEGORIES.es).filter((s) => !categories.includes(s));
+
+  const saveCurrentGrid = () => {
+    const name = saveName.trim();
+    if (!name || categories.length === 0) return;
+    const next = [...savedGrids.filter((g) => g.name !== name), { name, categories }];
+    setSavedGrids(next); persistSavedGrids(next);
+    setSaveName(""); setShowSaveInput(false);
+  };
+  const deleteGrid = (name) => {
+    const next = savedGrids.filter((g) => g.name !== name);
+    setSavedGrids(next); persistSavedGrids(next);
+  };
 
   return (
     <div>
@@ -279,7 +304,36 @@ function CategoryEditor({ lang, categories, setCategories }) {
       ) : (
         <p className="text-xs font-body" style={{ color: C.muted }}>{t(lang, "maxCategories")}</p>
       )}
-      <p className="text-xs font-body mt-1" style={{ color: C.muted }}>{t(lang, "categoriesHint")}</p>
+      <p className="text-xs font-body mt-1 mb-3" style={{ color: C.muted }}>{t(lang, "categoriesHint")}</p>
+
+      {savedGrids.length > 0 && (
+        <div className="mb-2">
+          <p className="text-xs font-body mb-1" style={{ color: C.muted }}>{t(lang, "savedGrids")}</p>
+          <div className="flex flex-wrap gap-2">
+            {savedGrids.map((g) => (
+              <span key={g.name} className="flex items-center gap-1 text-xs font-body px-2.5 py-1 rounded-lg"
+                style={{ background: "#fff", border: `1px solid ${C.rule}`, color: C.text }}>
+                <button onClick={() => setCategories(g.categories)}>{g.name}</button>
+                <button onClick={() => deleteGrid(g.name)}><X size={11} color={C.muted} /></button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {!showSaveInput ? (
+        <button onClick={() => setShowSaveInput(true)} className="text-xs font-body font-medium" style={{ color: C.ink }}>
+          {t(lang, "saveThisGrid")}
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <input value={saveName} onChange={(e) => setSaveName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveCurrentGrid()}
+            placeholder={t(lang, "gridNamePlaceholder")} className="flex-1 rounded-lg px-3 py-2 outline-none font-body text-sm"
+            style={{ background: C.inputBg, border: `1px solid ${C.rule}`, color: C.text }} />
+          <button onClick={saveCurrentGrid} className="px-3 rounded-lg font-body text-sm font-medium" style={{ background: C.green, color: "#2f2a22" }}>
+            {t(lang, "save")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -349,7 +403,7 @@ export default function StopGameApp() {
     <ThemeContext.Provider value={{ colors, theme, toggle }}>
       <div className="font-body min-h-screen w-full py-4 sm:py-8" style={{ background: theme === "light" ? "#eef1f4" : "#14161d", color: colors.text }}>
         <style>{FONT_STYLE}</style>
-        <div className="max-w-4xl mx-auto shadow-2xl relative" style={{
+        <div className="w-[95%] max-w-6xl mx-auto shadow-2xl relative" style={{
           clipPath: tornEdgePath(),
           backgroundColor: colors.bg,
           backgroundImage: `radial-gradient(circle, transparent 6px, ${colors.ring} 6px, ${colors.ring} 9px, transparent 9px), repeating-linear-gradient(to bottom, transparent 0px, transparent 29px, ${colors.rule} 30px)`,
@@ -360,7 +414,7 @@ export default function StopGameApp() {
           {/* red margin rule, like a real notebook page */}
           <div className="hidden sm:block absolute top-0 bottom-0" style={{ left: 48, width: 2, background: colors.margin, opacity: 0.6 }} />
           <div className="px-5 pl-8 sm:pl-16 sm:pr-10 pt-6 pb-10">
-            <div className="max-w-md sm:max-w-2xl mx-auto">
+            <div className="max-w-md sm:max-w-4xl mx-auto">
               {mode === "menu" && <MenuScreen setMode={setMode} lang={lang} setLang={setLang} />}
               {mode === "online" && <OnlineGame lang={lang} onExit={() => setMode("menu")} />}
               {mode === "practice" && <PracticeGame lang={lang} onExit={() => setMode("menu")} />}
@@ -614,19 +668,18 @@ function AnswerGrid({ categories, answers, onChange, inputRefs, lang, letter }) 
 // letter + timer + STOP, meant to sit as a slim sidebar next to the answer grid on wide screens
 // STOP as a hand-drawn open circle (marker stroke with a gap), not a wide button —
 // small and unobtrusive, especially in the mobile bar
-function StopCircleButton({ onClick, disabled, size = 64 }) {
+// STOP as a big, clearly visible rectangle with a hand-drawn marker border —
+// no more tiny circle that's easy to miss, especially on mobile
+function StopRectButton({ onClick, disabled, height = 56, fontSize = 24 }) {
   const C = useColors();
-  const r = size / 2 - size * 0.08;
-  const cx = size / 2, cy = size / 2;
   return (
     <button onClick={onClick} disabled={disabled}
-      className="paper-lift relative flex-shrink-0 flex items-center justify-center disabled:opacity-30"
-      style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", top: 0, left: 0 }}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.red} strokeWidth={size * 0.09} strokeLinecap="round"
-          pathLength={100} strokeDasharray="82 18" strokeDashoffset="-6" transform={`rotate(-95 ${cx} ${cy})`} />
-      </svg>
-      <span className="font-title relative" style={{ fontSize: size * 0.22, lineHeight: 1 }}>STOP</span>
+      className="paper-lift w-full flex items-center justify-center disabled:opacity-30"
+      style={{
+        height, background: C.red, border: "3px solid #2f2a22",
+        borderRadius: "10px 6px 9px 5px", boxShadow: "0 3px 0 rgba(0,0,0,0.2)",
+      }}>
+      <span className="font-title" style={{ fontSize, lineHeight: 1 }}>STOP</span>
     </button>
   );
 }
@@ -637,26 +690,25 @@ function StopBar({ lang, elapsedSecs, canStop, onStop, hintKey }) {
   const C = useColors();
   return (
     <>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1 text-sm font-body" style={{ color: C.muted }}>
+      <div className="hidden sm:block mb-3">
+        <div className="flex items-center gap-1 text-sm font-body mb-2" style={{ color: C.muted }}>
           <Clock size={14} /> {elapsedSecs}s
         </div>
-        <div className="hidden sm:block">
-          <StopCircleButton onClick={onStop} disabled={!canStop} size={60} />
-        </div>
+        <StopRectButton onClick={onStop} disabled={!canStop} height={60} fontSize={26} />
+        {!canStop && <p className="text-xs font-body mt-2" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
       </div>
-      {!canStop && <p className="text-xs font-body mb-3" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
+      {!canStop && <p className="sm:hidden text-xs font-body mb-2" style={{ color: C.muted }}>{t(lang, hintKey)}</p>}
 
-      {/* mobile: fixed bottom bar — small circular STOP, always one thumb-tap away */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-2 flex items-center justify-between"
+      {/* mobile: fixed bottom bar — big rectangular STOP, occupies the width, always one thumb-tap away */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 p-3"
         style={{ background: C.card, borderTop: `2px solid ${C.rule}`, boxShadow: "0 -4px 14px rgba(0,0,0,0.15)" }}>
-        <div className="flex items-center gap-1 text-xs font-body" style={{ color: C.muted }}>
+        <div className="flex items-center justify-center gap-1 text-xs font-body mb-2" style={{ color: C.muted }}>
           <Clock size={12} /> {elapsedSecs}s
         </div>
-        <StopCircleButton onClick={onStop} disabled={!canStop} size={56} />
+        <StopRectButton onClick={onStop} disabled={!canStop} height={56} fontSize={24} />
       </div>
       {/* spacer so the fixed bar never covers the last row of inputs on mobile */}
-      <div className="sm:hidden" style={{ height: 72 }} />
+      <div className="sm:hidden" style={{ height: 108 }} />
     </>
   );
 }
@@ -667,7 +719,7 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
     <Card rotate={-0.5}>
       <h2 className="font-display text-2xl mb-1" style={{ color: C.red }}>{t(lang, "resultsTitle")} {letter}</h2>
       {stoppedByLabel && <p className="text-xs font-body mb-1" style={{ color: C.red }}>{stoppedByLabel}</p>}
-      <p className="text-xs font-body mb-4" style={{ color: C.muted }}>{t(lang, "tapToInvalidate")}</p>
+      <p className="text-xs font-body mb-4 font-semibold" style={{ color: C.red }}>{t(lang, "tapToInvalidate")}</p>
       <div className="sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6">
         {categories.map((cat, i) => (
           <div key={cat} className="mb-4">
@@ -681,9 +733,15 @@ function RevealList({ lang, letter, categories, players, getAnswer, disabledKeys
                 const isDisabled = disabledKeys.includes(key);
                 return (
                   <button key={p.id} onClick={() => validStart && toggleInvalid(p.id, cat)}
-                    className="w-full flex items-center justify-between text-sm font-body py-1" style={{ opacity: validStart && !isDisabled ? 1 : 0.4 }}>
-                    <span>{p.name}: {val || "—"}</span>
-                    {validStart && <Check size={14} color={isDisabled ? C.muted : C.green} />}
+                    className="w-full flex items-center justify-between text-sm font-body py-2 px-1"
+                    style={{ opacity: validStart ? 1 : 0.4 }}>
+                    <span style={{ textDecoration: isDisabled ? "line-through" : "none" }}>{p.name}: {val || "—"}</span>
+                    {validStart && (
+                      <span className="flex items-center justify-center rounded-full flex-shrink-0 ml-2"
+                        style={{ width: 26, height: 26, background: isDisabled ? "#fbdad6" : "#d4f0e2" }}>
+                        {isDisabled ? <X size={15} color="#b5352f" /> : <Check size={15} color="#3f7d5c" />}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -838,7 +896,7 @@ function PracticeGame({ lang, onExit }) {
       <Header subtitle={t(lang, "menuPracticeTitle")} />
 
       {phase === "setup" && (
-        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start max-w-2xl mx-auto">
           <div>
             <Card color="#a9cdf2" rotate={-0.8}>
               <div className="flex items-center justify-between mb-2">
@@ -1120,7 +1178,7 @@ function OnlineGame({ lang, onExit }) {
       <div>
         <BackBar onBack={onExit} label={t(lang, "mainMenu")} />
         <Header subtitle={t(lang, "menuOnlineTitle")} />
-        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-stretch">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-stretch max-w-2xl mx-auto">
           <Card color="#ffd3dc" rotate={-1} className="h-full">
             <div className="text-left h-full flex flex-col">
               <div className="flex-1">
@@ -1161,7 +1219,7 @@ function OnlineGame({ lang, onExit }) {
       <div>
         <BackBar onBack={leaveRoom} label={t(lang, "exitRoom")} />
         <Header subtitle={t(lang, "lobbyTitle")} />
-        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start max-w-2xl mx-auto">
           <Card color="#ffd3dc" rotate={-1}>
             <p className="text-xs font-body mb-1" style={{ color: "#4a4438" }}>{t(lang, "roomCode")}</p>
             <div className="flex items-center justify-center gap-2 mb-1">
